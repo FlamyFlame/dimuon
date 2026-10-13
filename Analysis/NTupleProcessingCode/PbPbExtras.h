@@ -61,6 +61,8 @@ protected:
     std::unordered_map<int, std::pair<float,float>> evsel_cut3_per_run_;
     // Runs excluded from all event selection and analysis (loaded by InitEventSel)
     std::unordered_set<int> evsel_bad_runs_;
+    // Partially-bad runs: LB ranges excluded (PbPbBadLBRanges; 2026 only so far)
+    std::vector<PbPbBadLBRange> evsel_bad_lbs_;
     TGraph* g_evsel_cut4_{nullptr};       // nTrk frac lower bound
     TGraph* g_evsel_cut5_lo_{nullptr};    // nTrk-FCal lower bound
     TGraph* g_evsel_cut5_hi_{nullptr};    // nTrk-FCal upper bound

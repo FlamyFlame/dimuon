@@ -5,6 +5,8 @@
 
 #include <string>
 #include <unordered_set>
+#include <vector>
+#include <limits>
 #include "TGraph.h"
 
 // ---- Cut order (1-indexed; 0 unused) ----------------------------------------
@@ -54,17 +56,48 @@ inline std::string PbPbEvSelCutsPath(int run_year) {
            std::to_string(yr) + ".root";
 }
 
-// ---- Run-quality exclusion list (keyed by 2-digit or 4-digit year) ---------
-// Returns runs excluded from all event selection derivations and analysis.
-// NOTE: a run excluded here must ALSO have its luminosity removed from
+// ---- Run / LB data-quality exclusion (keyed by 2-digit or 4-digit year) ---
+// Applied BEFORE ANY analysis step: the event-selection cut DERIVATION macros
+// (plot_pbpb_event_sel_event_level / _cuts / plot_pbpb_fcal_comparison) and the
+// NTuple processing (PbPbExtras::PassEventSel) drop these events first.
+// NOTE: anything excluded here must ALSO have its luminosity removed from
 // Utilities/PbPbSampledLumi.h and PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>(),
-// or the cross-section numerator and denominator cover different runs.
-// 2026: no run is excluded (the GRL physics_HI2026_50ns_noIBL.xml is the only
-// selection).  Revisit if a 2026 data-quality review flags runs.
+// or the cross-section numerator and denominator cover different runs / LBs.
+//
+// 2023: two b-hadron runs.
+// 2026 (USER DECISION 2026-10-12; LB boundaries = the ATLAS twiki's final selection,
+// slightly different from our own N_trk/FCal LB scan): runs 522384 + 522408 entirely;
+// run 522336 LB 344-521; run 522355 LB >= 448.  Same removals as the GRL
+// SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml (the 2026 skim itself was made
+// with the original physics_HI2026_50ns_noIBL.xml, so they are applied here).
+// See Analysis/docs/tracking/pbpb2026_analysis_support.md (D7).
 inline std::unordered_set<int> PbPbBadRuns(int run_year) {
     int yr = run_year % 2000;
     if (yr == 23) return {461674, 462964};
+    if (yr == 26) return {522384, 522408};
     return {};
+}
+
+// Partially-bad runs: inclusive LB ranges [lb_lo, lb_hi] to drop.
+struct PbPbBadLBRange { int run; unsigned lb_lo; unsigned lb_hi; };
+inline std::vector<PbPbBadLBRange> PbPbBadLBRanges(int run_year) {
+    int yr = run_year % 2000;
+    if (yr == 26) return {
+        {522336, 344u, 521u},
+        {522355, 448u, std::numeric_limits<unsigned>::max()},   // LB >= 448 (to end of run)
+    };
+    return {};
+}
+
+// Event-level helper for code that does not cache the lists (per-event cost is a hash
+// lookup + a loop over <= a few ranges).
+inline bool PbPbIsBadRunLB(const std::unordered_set<int>& bad_runs,
+                           const std::vector<PbPbBadLBRange>& bad_lbs,
+                           int run, unsigned lb) {
+    if (bad_runs.count(run)) return true;
+    for (const auto& r : bad_lbs)
+        if (r.run == run && lb >= r.lb_lo && lb <= r.lb_hi) return true;
+    return false;
 }
 
 // ---- TGraph cut evaluator with clamped extrapolation -----------------------

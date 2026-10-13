@@ -39,17 +39,22 @@ inline double PbPbMu4SampledLumiNb(int run_year){
         // make_crossx_factors_pbpb_2024.
         case 24: return 0.85112;
         case 25: return 2.59933;
-        // 2026 (added 2026-09-10): Prescale-Corrected Total = 2623.16 ub^-1 =
-        // 2.62316 nb^-1 from lumitable_pbpb_26_HLT_mu4.csv (35 runs, 522041-523437),
-        // whose run list is byte-identical to the skim GRL
-        // physics_HI2026_50ns_noIBL.xml. No 2026 run is excluded at event level
-        // (PbPbBadRuns has no 26 entry), so the R_AA luminosity is the GRL total.
-        // MUST match PbPbBaseClass.h make_crossx_factors_pbpb_2026.
-        // Skim completeness confirmed 2026-09-16: 7 parts, all 35 GRL runs at 100 % of their
-        // files (registry P14 lifted). Events skipped at skim time for absent required ZDC
-        // data (few-LB clusters in runs 522200 / 522949) are a negligible fraction of the
-        // dataset and do NOT reduce the luminosity (user ruling 2026-09-15).
-        case 26: return 2.62316;
+        // 2026: NO VALID LUMINOSITY until the lumitable is regenerated (USER DECISION
+        // 2026-10-12).  Runs 522384 + 522408, run 522336 LB 344-521 and run 522355
+        // LB >= 448 are now excluded at event level (PbPbEventSelConfig.h), so the old
+        // value -- the full-GRL Prescale-Corrected total 2.62316 nb^-1 of
+        // lumitable_pbpb_26_HLT_mu4.csv (35 runs) -- no longer describes the events
+        // analysed.  The user regenerates the HLT_mu4 lumitable from
+        // SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml; put its Prescale-Corrected
+        // total here AND in PbPbBaseClass.h::make_crossx_factors_pbpb_2026 (kept NaN until
+        // then).  Throw rather than return the stale full-GRL value: that would bias every
+        // 2026 cross section LOW by the excluded fraction with no warning.
+        case 26:
+            throw std::runtime_error(
+                "PbPbMu4SampledLumiNb: Pb+Pb 2026 luminosity is PENDING the lumitable "
+                "regenerated from physics_HI2026_50ns_noIBL_updated.xml (bad runs / LBs "
+                "excluded 2026-10-12). Update Utilities/PbPbSampledLumi.h and "
+                "PbPbBaseClass.h::make_crossx_factors_pbpb_2026 together.");
         // Run 2 (2015 + 2018) is still a live code path: RDFBasedHistFillingPbPb keeps a
         // full `run_year == 15 || run_year == 18` branch and PbPbBaseClass registers
         // {18,"default"} crossx factors, so FillHistogramsCrossx can reach this function

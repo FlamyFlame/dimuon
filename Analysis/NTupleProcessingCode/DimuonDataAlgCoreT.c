@@ -290,6 +290,7 @@ void DimuonDataAlgCoreT<PairT, MuonT, Derived, Extras...>::InitInputBranchesDimu
     //SetBranch Status
     fChainRef()->SetBranchStatus("*"                               ,0);//switch off all branches, then enable just the ones that we need
     fChainRef()->SetBranchStatus("RunNumber"                       ,1);
+    fChainRef()->SetBranchStatus("lbn"                             ,1); // Pb+Pb bad-LB exclusion (PbPbExtras::PassEventSel); also fills the output `lb`
     fChainRef()->SetBranchStatus("muon_deltaP_overP"               ,1);
   
     fChainRef()->SetBranchStatus("muon_pair_muon1_index"           ,1);
