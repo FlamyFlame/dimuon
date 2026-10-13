@@ -967,6 +967,11 @@ constructs. Pre-change outputs backed up in `~/usatlasdata/dimuon_data/pbpb_2026
 Driver `pipelines/run_pbpb26_badlb_evsel_ntuple_20261012.sh` (log `pipelines/logs/pbpb26_badlb_evsel_ntuple_20261012.log`):
 evsel derivation + plots for 26, FCal comparisons, Condor `run_pbpb_26.sub` + `run_pbpb_26_nominal.sub`, hadd.
 Stops before RDF / fits / crossx (user).
+Outcome (2026-10-12 23:33): event_level / cuts / cuts_alt (26) regenerated with the exclusion
+(`event_sel_cuts_pbpb_2026.root` 19:58, `_alt.root` 20:43; 33/33 runs with per-run preamp fits); the driver
+was then terminated (SIGTERM, exit 143) after 2h50m inside `plot_pbpb_fcal_comparison`, and the user asked to
+STOP the 2026 NTuple processing. NOT done: the 4 FCal comparisons, Condor NTuple (none submitted), hadd,
+`verify_out.C` checks, preamp diagnostics, review iteration 3.
 
 ### 2026-10-12 — Step 18 DONE: 2026 luminosity from the regenerated updated-GRL lumitable
 
@@ -1047,6 +1052,9 @@ outside the requested 2026 scope and is a user decision.
   until the skim finishes.
 
 ## Latest Stage
+
+**2026-10-12 — Step 17 STOPPED (user):** evsel cuts for 26 regenerated with D7; FCal comparisons + 2026 NTuple
+processing NOT run (see Step 17 outcome). Restart when the user asks.
 
 **2026-10-12 — Step 18 DONE (review PASS):** 2026 luminosity = 2.40869 nb^-1 in `PbPbSampledLumi.h` and `PbPbBaseClass.h`;
 docs synced (see Progress Log "Step 18"). Awaiting the user: cluster build of `PbPbBaseClass.h`, then rerun of the crossx
