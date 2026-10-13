@@ -522,7 +522,8 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			c->cd(ip + 1);
 			gPad->SetLogx();   // pT_bins_150 is log-binned (as in the crossx panels)
 			gPad->SetLeftMargin(0.16);
-			gPad->SetBottomMargin(0.15);
+			gPad->SetBottomMargin(0.18);
+			gPad->SetRightMargin(0.04);
 			TH1D* h = hr[ip];
 			h->SetStats(0);
 			h->SetTitle("");
@@ -536,6 +537,7 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			h->GetYaxis()->SetTitle("R_{AA}");
 			h->GetXaxis()->SetTitleSize(0.06); h->GetYaxis()->SetTitleSize(0.06);
 			h->GetXaxis()->SetLabelSize(0.05); h->GetYaxis()->SetLabelSize(0.05);
+			h->GetXaxis()->SetTitleOffset(1.15);
 			h->GetXaxis()->SetMoreLogLabels();
 			h->Draw("E1");
 			TLine* one = new TLine(h->GetXaxis()->GetXmin(), 1., h->GetXaxis()->GetXmax(), 1.);
@@ -550,8 +552,9 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			}
 			if (ip == 1){
 				TLatex t2; t2.SetNDC(); t2.SetTextFont(42); t2.SetTextSize(0.045);
-				t2.DrawLatex(0.20, 0.76, Form("%s, centrality %d-%d%%", legend_pbpb_label.c_str(), clo, chi));
-				t2.DrawLatex(0.20, 0.69, legend_pp_label.c_str());
+				t2.DrawLatex(0.20, 0.76, legend_pbpb_label.c_str());
+				t2.DrawLatex(0.20, 0.69, Form("centrality %d-%d%%", clo, chi));
+				t2.DrawLatex(0.20, 0.62, legend_pp_label.c_str());
 			}
 			if (ip == 2){
 				TLatex t3; t3.SetNDC(); t3.SetTextFont(42); t3.SetTextSize(0.045);
