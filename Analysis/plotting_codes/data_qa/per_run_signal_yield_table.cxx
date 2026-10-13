@@ -13,6 +13,7 @@
 #include "TSystem.h"
 #include "MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "NTupleProcessingCode/PbPbEventSelConfig.h"
+#include "NTupleProcessingCode/PPEventSelConfig.h"
 
 void per_run_signal_yield_table(const std::string& tag, const std::string& file, bool is_pbpb,
                                 const std::string& outdir) {
@@ -36,6 +37,13 @@ void per_run_signal_yield_table(const std::string& tag, const std::string& file,
         const std::string ctr = "avg_centrality >= " + std::to_string(ParamsSet::ctrbins.front())
                               + " && avg_centrality < " + std::to_string(ParamsSet::ctrbins.back());
         n = n.Filter(ctr, "centrality acceptance");
+    } else {
+        // pp: bad-LB exclusion (PPBadLBRanges, e.g. run 488456 LB 84-220 for pp24) -- same safety repeat as for Pb+Pb;
+        // without it the run's N would cover more LBs than its (new-GRL) luminosity
+        const int yr = std::stoi(tag.substr(tag.size() - 2));
+        const auto bad_lbs = PPBadLBRanges(yr);
+        n = n.Filter([bad_lbs](UInt_t r, UInt_t lb) { return !PPIsBadRunLB(bad_lbs, (int)r, lb); },
+                     {"run_number", "lb"}, "good run/LB");
     }
     n = n.Filter(sig, "signal");
     auto run = n.Take<UInt_t>("run_number");

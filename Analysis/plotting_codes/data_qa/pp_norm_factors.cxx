@@ -3,7 +3,7 @@
 //   N_HLT_2mu4 = events with the event-level HLT_2mu4_L12MU3V decision in the raw skim NTUP (hlt_events_per_run.cxx)
 //   N_sig      = signal-region OS Tight distinct events (per_run_signal_yield_table.cxx, <tag>_per_run.csv)
 //   L          = Prescale-Corrected HLT_2mu4_L12MU3V lumi [pb^-1] (unprescaled; the table the N/L plot uses)
-// pp has no event selection.  User choice 2026-10-12: the analysis trigger 2mu4 (unprescaled), not the prescaled mu4.
+// pp has no event selection beyond the bad-LB exclusion (PPBadLBRanges: run 488456 LB 84-220, also applied here).  User choice 2026-10-12: the analysis trigger 2mu4 (unprescaled), not the prescaled mu4.
 #include <cmath>
 #include <fstream>
 #include <iostream>
