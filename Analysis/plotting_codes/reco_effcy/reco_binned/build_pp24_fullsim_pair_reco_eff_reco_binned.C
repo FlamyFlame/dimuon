@@ -23,7 +23,8 @@
 //   input  reco_eff/pair_reco_sf_cells_pp24_full.root (fill_pp24_fullsim_pair_reco_sf_cells.C; its unweighted
 //          cells were verified identical to the migration file there), cell set "sf_<wp>" = R, TR, M weighted
 //          by w*SF_1*SF_2, T unweighted; output reco_eff/pair_reco_eff_reco_binned_sf_pp24_full.root with the
-//          same keys and the ValueSF marker. Errors: the same A/B/D formula on the SF-weighted sums.
+//          same keys and the ValueSF marker. Value = N^SF[R]/N[T] (exact); error = the MC-only A/B/D RELATIVE
+//          error carried over (see the RatioOverCells lambda below).
 //
 // Usage (from Analysis/plotting_codes/reco_effcy/reco_binned/):
 //   root -l -b -q 'build_pp24_fullsim_pair_reco_eff_reco_binned.C+'            (MC only)

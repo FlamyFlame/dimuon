@@ -301,7 +301,8 @@ protected:
     //   eps_trig -- the HYBRID per-pair 2mu4 efficiency (Utilities/PairTrigEffCrossxEvaluator.h):
     //               data singles x MC dR correlation correction below the last two coarse
     //               pair-pT bins, single-value MC pair efficiency x SF1 SF2 in them
-    //   eps_reco -- pp24-fullsim PAIR reco efficiency (Utilities/PairRecoEffEvaluator.h)
+    //   eps_reco -- pp24-fullsim 3D bin-by-bin PAIR reco efficiency x muon SF product, at the reco
+    //               (pT, eta^pair, m) (Utilities/PairRecoEffRecoBinnedEvaluator.h, SF product)
     void                OpenPairEfficiencyInputs();
     ROOT::RDF::RNode    AddPairEfficiencyWeightColumns(ROOT::RDF::RNode df);
     void                PrintPairEfficiencyStats();

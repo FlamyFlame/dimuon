@@ -19,17 +19,19 @@
 #include "PairRecoEffRecoBinnedEvaluator.h"
 
 // =================================================================================================
-// PbPbRecoEffScaledPlaceholderEvaluator -- the Pb+Pb pair reco efficiency PLACEHOLDER, scaled to the
-// Run-3 signal region (docs/tracking/crossx_raa_reco_binned_propagation_20261013.md, Physics Procedure §2):
+// PbPbRecoEffScaledPlaceholderEvaluator -- the Pb+Pb pair reco efficiency PLACEHOLDER, anchored to the pp24
+// Run-3 correction (docs/tracking/crossx_raa_reco_binned_propagation_20261013.md, Physics Procedure §2, D4):
 //
-//   eps_PbPb(pair) = E_Run2(p, c) * G_j
+//   eps_PbPb(pair) = C_Run2(p, c) * eps^{reco,SF}_j
+//   C_Run2(p, c)   = E_Run2(p, c) / E_Run2(p, 60-80 %),
 //   E_Run2(p, c)   = <eps_Run2(pT_1, q*eta_1; c) * eps_Run2(pT_2, q*eta_2; c)> over the pp24 fullsim truth
-//                    signal pairs T in pair-pT bin p (truth kinematics, MC weight): the eta^pair-AVERAGED
-//                    Run-2 placeholder -- only its pair-pT and centrality dependence survive
-//   G_j            = eps^{reco,SF}_j / eps^{nogap}_p : pp24 fullsim, j = reco (pT, eta^pair, m) cell,
-//                    eps^{nogap}_p = the pp24 MC efficiency WITHOUT the single-muon gap windows and without
-//                    SFs, eta^pair- and m-integrated in pT bin p. G carries the gap-cut acceptance, the
-//                    eta^pair (and m) shape and the data/MC SF product relative to the Run-2 level.
+//                    signal pairs T in pair-pT bin p (truth kinematics, MC weight)
+//   eps^{reco,SF}_j: the pp24 3D bin-by-bin, SF-corrected reco efficiency of the reco (pT, eta^pair, m) cell j
+//
+// Run 2 supplies ONLY the centrality dependence (relative to its most peripheral interval, per pair-pT bin);
+// level, pair-pT, eta^pair (gap acceptance) and m dependence and the data/MC SFs are pp24's. User decision D4
+// 2026-10-13 ("anchor to pp24"): a Run-2-vs-Run-3 efficiency LEVEL difference must not enter R_AA.
+// Stored as h_E_run2_<wp> (= C_Run2) and h_G_<wp> (= eps^{reco,SF}).
 //
 // Centrality c is binned on the Run-2 placeholder's own intervals {0,10,20,30,40,50,60,80} (the
 // intervals EvaluateSingleMuonRecoEffPlaceholder maps onto; c >= 80 -> last interval, as there).
@@ -40,10 +42,10 @@
 namespace PbPbRecoEffScaledPlaceholderDefinition {
 inline const char* Key() { return "pbpb_reco_eff_scaled_placeholder_definition"; }
 inline const char* Value() {
-    return "eps_PbPb = E_Run2(pT bin, centrality interval) * G_j; E_Run2 = <eps_Run2(1)*eps_Run2(2)> over pp24 fullsim "
-           "truth signal pairs (truth kinematics) per pT bin; G_j = eps^{reco,SF}_j / eps^{nogap}_pT (pp24 fullsim, "
-           "j = reco (pT, eta^pair, m), nogap = no single-muon gap windows, no SF); "
-           "docs/tracking/crossx_raa_reco_binned_propagation_20261013.md";
+    return "eps_PbPb = C_Run2(pT bin, centrality interval) * eps^{reco,SF}_j; C_Run2 = E_Run2(p,c)/E_Run2(p,60-80%), "
+           "E_Run2 = <eps_Run2(1)*eps_Run2(2)> over pp24 fullsim truth signal pairs (truth kinematics) per pT bin; "
+           "eps^{reco,SF}_j = pp24 fullsim 3D reco-binned SF-corrected (j = reco (pT, eta^pair, m)); anchored to pp24 "
+           "(D4); docs/tracking/crossx_raa_reco_binned_propagation_20261013.md";
 }
 inline std::vector<double> CentralityEdges() { return {0., 10., 20., 30., 40., 50., 60., 80.}; }
 // Representative centrality of each interval, passed to EvaluateSingleMuonRecoEffPlaceholder.
@@ -54,8 +56,8 @@ struct PbPbRecoEffScaledPlaceholderEvaluator {
 
     static constexpr double kMinEff = 0.05;
 
-    std::unique_ptr<TH2D> h_E;      // E_Run2(pT, centrality interval)
-    std::unique_ptr<TH3D> h_G;      // G(pT, eta^pair, m)
+    std::unique_ptr<TH2D> h_E;      // C_Run2(pT, centrality interval) = E_Run2 / E_Run2(60-80 %)
+    std::unique_ptr<TH3D> h_G;      // eps^{reco,SF}(pT, eta^pair, m), pp24
     std::unique_ptr<TH2D> h_G2d;    // m-integrated fallback
     double G_incl = -1.0;
     std::string wp, path;
@@ -97,8 +99,8 @@ struct PbPbRecoEffScaledPlaceholderEvaluator {
             for (int k = 1; k <= h_E->GetNbinsY(); ++k)
                 if (!(h_E->GetBinContent(i, k) > 0.))
                     throw std::runtime_error("PbPbRecoEffScaledPlaceholderEvaluator: empty E_Run2 cell in " + path);
-        std::cout << "PbPbRecoEffScaledPlaceholderEvaluator [" << wp << " WP]: loaded E_Run2 ("
-                  << h_E->GetNbinsX() << " pT x " << h_E->GetNbinsY() << " centrality) and G ("
+        std::cout << "PbPbRecoEffScaledPlaceholderEvaluator [" << wp << " WP]: loaded C_Run2 = E_Run2/E_Run2(60-80%) ("
+                  << h_E->GetNbinsX() << " pT x " << h_E->GetNbinsY() << " centrality) and eps^{reco,SF} ("
                   << h_G->GetNbinsX() * h_G->GetNbinsY() * h_G->GetNbinsZ() << " cells, inclusive " << G_incl
                   << ") from " << path << std::endl;
     }

@@ -2,10 +2,16 @@
 // build_pbpb_reco_eff_scaled_placeholder.C
 //
 // Builds the Pb+Pb SCALED reco-efficiency placeholder (docs/tracking/crossx_raa_reco_binned_propagation_20261013.md,
-// Physics Procedure §2, §3c; evaluator Utilities/PbPbRecoEffScaledPlaceholderEvaluator.h):
+// Physics Procedure §2, §3c, D4; evaluator Utilities/PbPbRecoEffScaledPlaceholderEvaluator.h):
 //
-//   E_Run2(p, c) = sum_{T, pT bin p} w * eps_Run2(pT_1, q*eta_1; c) * eps_Run2(pT_2, q*eta_2; c) / sum_{T, p} w
-//   G_j          = eps^{reco,SF}_j / eps^{nogap}_p
+//   eps_PbPb(j, c) = C_Run2(p, c) * eps^{reco,SF}_j
+//   C_Run2(p, c)   = E_Run2(p, c) / E_Run2(p, 60-80 %)          (stored as h_E_run2_<wp>)
+//   E_Run2(p, c)   = sum_{T, pT bin p} w * eps_Run2(pT_1, q*eta_1; c) * eps_Run2(pT_2, q*eta_2; c) / sum_{T, p} w
+//   G_j            = eps^{reco,SF}_j                             (stored as h_G_<wp>)
+//
+// D4 (user 2026-10-13, "anchor to pp24"): Run 2 supplies ONLY the centrality dependence relative to its most
+// peripheral interval; level, pair-pT, eta^pair (gap acceptance) and m dependence and the SFs all come from the
+// pp24 eps^{reco,SF} -- so 60-80 % Pb+Pb = pp24 exactly and no Run-2-vs-Run-3 level factor enters R_AA.
 //
 //   T            : pp24 fullsim truth signal pairs (truth mass window, truth pair pT, truth (pT, eta^pair, m)
 //                  inside the canonical axes) -- the SAME definition as fill_pp24_fullsim_pair_bin_migration.C;
@@ -13,11 +19,11 @@
 //                  MC fits via RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder (the function the
 //                  crossx used), centrality = the interval's representative value.
 //   eps^{reco,SF}: reco_eff/pair_reco_eff_reco_binned_sf_pp24_full.root (3D, m-integrated 2D, inclusive)
-//   eps^{nogap}_p: reco_eff/pair_reco_sf_cells_pp24_full.root  h_pair_pt_Rnogap_<wp> / h_pair_pt_T
+//   eps^{nogap}_p: written for reference only (h_eps_nogap_<wp>; the D1 normalisation it served is superseded by D4)
 //
 // Output: reco_eff/pbpb_reco_eff_scaled_placeholder.root (in the pp24 fullsim reco_eff dir, next to its inputs):
-//   h_E_run2_<wp> (TH2D pT x centrality interval), h_G_<wp> (TH3D), h_G_<wp>_minv_integrated (TH2D),
-//   G_inclusive_<wp>, h_eps_nogap_<wp> (TH1D), definition marker.
+//   h_E_run2_<wp> (TH2D C_Run2, pT x centrality interval), h_E_run2_abs_<wp> (absolute E_Run2, reference),
+//   h_G_<wp> (TH3D), h_G_<wp>_minv_integrated (TH2D), G_inclusive_<wp>, h_eps_nogap_<wp> (TH1D), definition marker.
 //
 // Usage (needs the compiled data class for the Run-2 lookup):
 //   cd Analysis/plotting_codes/reco_effcy/reco_binned
@@ -75,7 +81,7 @@ void build_pbpb_reco_eff_scaled_placeholder()
             nbad.push_back(dk.Filter("eps_run2_pair < 0").Count());
             he.push_back(dk.Histo1D({Form("he%d", k), "", npt, ept.data()}, "truth_pair_pt", "w_eps"));
         }
-        TH2D hE(("h_E_run2_" + wp).c_str(),
+        TH2D hEabs(("h_E_run2_abs_" + wp).c_str(),
                 "E_{Run2} = #LT#varepsilon_{Run2}(1)#varepsilon_{Run2}(2)#GT_{T};p_{T}^{pair} [GeV];centrality [%]",
                 npt, ept.data(), nc, ec.data());
         for (int k = 0; k < nc; ++k) {
@@ -85,9 +91,16 @@ void build_pbpb_reco_eff_scaled_placeholder()
             for (int i = 1; i <= npt; ++i) {
                 const double w = hw->GetBinContent(i);
                 if (!(w > 0)) throw std::runtime_error("empty T pT bin " + std::to_string(i));
-                hE.SetBinContent(i, k + 1, he[k]->GetBinContent(i) / w);
+                hEabs.SetBinContent(i, k + 1, he[k]->GetBinContent(i) / w);
             }
         }
+        // C_Run2 = E_Run2 / E_Run2(most peripheral interval), per pT bin (D4).
+        TH2D hE(("h_E_run2_" + wp).c_str(),
+                "C_{Run2} = E_{Run2}(p_{T},c)/E_{Run2}(p_{T},60-80%);p_{T}^{pair} [GeV];centrality [%]",
+                npt, ept.data(), nc, ec.data());
+        for (int i = 1; i <= npt; ++i)
+            for (int k = 1; k <= nc; ++k)
+                hE.SetBinContent(i, k, hEabs.GetBinContent(i, k) / hEabs.GetBinContent(i, nc));
 
         // ---- G = eps^{reco,SF}_j / eps^{nogap}_p ----
         std::unique_ptr<TFile> fp(TFile::Open(sf_prod.c_str(), "READ"));
@@ -113,27 +126,29 @@ void build_pbpb_reco_eff_scaled_placeholder()
                 throw std::runtime_error("T per pT bin differs between the E pass and the SF cells file");
 
         TH1D hng(("h_eps_nogap_" + wp).c_str(), "#varepsilon^{nogap};p_{T}^{pair} [GeV]", npt, ept.data());
-        TH3D hG(("h_G_" + wp).c_str(), "G = #varepsilon^{reco,SF}_{j}/#varepsilon^{nogap}_{p};p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]",
+        TH3D hG(("h_G_" + wp).c_str(), "G = #varepsilon^{reco,SF}_{j};p_{T}^{pair} [GeV];#eta^{pair};m_{#mu#mu} [GeV]",
                 npt, ept.data(), neta, eeta.data(), nm, em.data());
         TH2D hG2((("h_G_" + wp) + "_minv_integrated").c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ept.data(), neta, eeta.data());
         for (int i = 1; i <= npt; ++i) {
             const double ng = hRn->GetBinContent(i) / hTp->GetBinContent(i);
             hng.SetBinContent(i, ng);
             for (int j = 1; j <= neta; ++j) {
-                if (e2->GetBinContent(i, j) > 0) hG2.SetBinContent(i, j, e2->GetBinContent(i, j) / ng);
+                if (e2->GetBinContent(i, j) > 0) hG2.SetBinContent(i, j, e2->GetBinContent(i, j));
                 for (int k = 1; k <= nm; ++k)
-                    if (e3->GetBinContent(i, j, k) > 0) hG.SetBinContent(i, j, k, e3->GetBinContent(i, j, k) / ng);
+                    if (e3->GetBinContent(i, j, k) > 0) hG.SetBinContent(i, j, k, e3->GetBinContent(i, j, k));
             }
         }
         const double ng_incl = hRn->Integral() / hTp->Integral();
         out.cd();
-        hE.Write(); hG.Write(); hG2.Write(); hng.Write();
-        TParameter<double>(("G_inclusive_" + wp).c_str(), ei->GetVal() / ng_incl).Write();
+        hE.Write(); hEabs.Write(); hG.Write(); hG2.Write(); hng.Write();
+        TParameter<double>(("G_inclusive_" + wp).c_str(), ei->GetVal()).Write();
 
-        std::cout << "[" << wp << "] eps^nogap inclusive " << ng_incl << ", eps^{reco,SF} inclusive " << ei->GetVal()
-                  << " -> G_incl " << ei->GetVal() / ng_incl << "\n  pT bin: eps^nogap | E_Run2 per centrality interval\n";
+        std::cout << "[" << wp << "] eps^nogap inclusive (reference) " << ng_incl << ", eps^{reco,SF} inclusive "
+                  << ei->GetVal() << "\n  pT bin: eps^nogap | E_Run2 (abs) per centrality | C_Run2 per centrality\n";
         for (int i = 1; i <= npt; ++i) {
             std::cout << Form("  [%6.2f,%6.2f): %.4f |", ept[i - 1], ept[i], hng.GetBinContent(i));
+            for (int k = 1; k <= nc; ++k) std::cout << Form(" %.4f", hEabs.GetBinContent(i, k));
+            std::cout << " |";
             for (int k = 1; k <= nc; ++k) std::cout << Form(" %.4f", hE.GetBinContent(i, k));
             std::cout << "\n";
         }

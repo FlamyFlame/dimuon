@@ -204,9 +204,9 @@ truth-matched pairs passing WP + the full data reco selection (incl. gap cuts) i
 ANYWHERE — the feed-in from outside T is present in data, so it must be in the numerator for the
 output to be N[T_j] (user decision 2026-10-11). The output (summed over m) is the
 efficiency-corrected truth (p_T, η^pair) distribution | truth signal selections — exactly the
-numerator population of A_sig, which is applied next. Not yet propagated to the cross-section
-(which still applies the truth-binned ε_reco(p_T, η^pair, ΔR) of (b) at reco kinematics); remaining
-open: prior (truth-shape) dependence of C_j; feed-in from truth muons below the NTuple truth
+numerator population of A_sig, which is applied next. **Propagated to the pp24 cross-section, the MC–data
+comparison and R_AA on 2026-10-13** (`docs/tracking/crossx_raa_reco_binned_propagation_20261013.md`; it replaces
+the truth-binned ε_reco(p_T, η^pair, ΔR) of (b) there); remaining open: prior (truth-shape) dependence of C_j; feed-in from truth muons below the NTuple truth
 fiducial (pT < 4.5 / |η| > 2.4) is not in the truth-seeded MC tree. The ε^reco η^pair axis stays the canonical
 coarse one even though the single-muon gap windows carve narrow holes into η^pair inside some coarse
 cells (user decision 2026-10-13, option A): the coarse-cell yield is correct only as far as MC models
@@ -214,6 +214,24 @@ the within-cell reco η^pair shape, so a **within-cell η^pair shape systematic*
 the MC truth η^pair shape inside each (p_T, η^pair) cell so MC reco matches the trigger-corrected data
 in 0.1 bins and recompute the cell ε (|δ| up to 5 % in the central cell below 26 GeV, ≤ 0.5 % in cells
 without a gap window; tracking doc §3d/R4).
+
+**Data/MC scale factors (2026-10-13).** ε^reco_j is an MC efficiency; it is brought to data with the
+single-muon data/MC efficiency SFs of the skim's MuonEfficiencyScaleFactors tool (WP-matched), as a
+pair = product of the two legs, applied on the MC reco numerator:
+ε^{reco,SF}_j = Σ_{R_j} w·SF₁·SF₂ / N[T_j] (Tight: ⟨SF₁SF₂⟩ = 0.931, inclusive ε 0.592 → 0.551).
+The tool gives no SF below p_T = 5 GeV (all muons in [4.5, 5) GeV); **user decision 2026-10-13: such a muon
+takes the SF of the nearest valid slice, [5, 6) GeV, at its η** (MC-weighted mean); SF = 1 there is the
+systematic variation (−3.1 % on ε at pair p_T 9–12.8 GeV, −1.0 % at 12.8–18.2, ≲0.5 % above; cancels in R_AA).
+
+**Pb+Pb reco efficiency (placeholder until the HIJING-overlay ε exists; 2026-10-13).** The Run-2 Pb+Pb
+single-muon MC fits (ε₁ε₂ per centrality and q·η) know neither the Run-3 gap-cut acceptance (folded into
+ε_reco) nor the SFs, so their η^pair dependence is wrong for our signal region. **User decision 2026-10-13
+("anchor to pp24"):** ε_PbPb(j, c) = C_Run2(p, c) · ε^{reco,SF}_j with C_Run2(p, c) = E_Run2(p, c) /
+E_Run2(p, 60–80 %), E_Run2 = the Run-2 ε₁ε₂ averaged over the pp24 fullsim truth signal pairs of pair-p_T
+bin p. Run 2 supplies ONLY the centrality dependence relative to 60–80 %; level, p_T, η^pair (gap
+acceptance), m dependence and SFs are the pp24 correction's, so no Run-2-vs-Run-3 efficiency-level factor
+enters R_AA (the per-centrality R_AA efficiency ratio is exactly 1/C_Run2). The Pb+Pb trigger correction
+stays the placeholder single-muon union without a correlation term.
 
 **(d) Normalization.** pp: integrated luminosity. Pb+Pb: number of events and the
 Glauber ⟨T_AA⟩ per centrality (and the total hadronic cross-section for centrality

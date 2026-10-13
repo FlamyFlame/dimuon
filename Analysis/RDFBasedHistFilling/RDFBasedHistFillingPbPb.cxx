@@ -7,14 +7,14 @@
 #include "../Utilities/PbPbRecoEffScaledPlaceholderEvaluator.h"
 
 // =================================================================================================
-// Pb+Pb pair reco-efficiency PLACEHOLDER, SCALED to the Run-3 signal region (2026-10-13,
-// docs/tracking/crossx_raa_reco_binned_propagation_20261013.md §2):
-//   eps_PbPb = E_Run2(pair-pT bin, centrality interval) * G_j(reco pT, eta^pair, m)
-// E_Run2 = the Run-2 single-muon MC placeholder product (colleague's fits), averaged over eta^pair on the
-// pp24 fullsim truth signal pairs -> keeps ONLY its pair-pT and centrality dependence; G = pp24 fullsim
-// eps^{reco,SF}_j / eps^{nogap}(pT) -> the gap-cut acceptance, the eta^pair/m shape and the data/MC SF
-// product. REPLACES the per-pair eps_Run2(1)*eps_Run2(2) (no gap acceptance, wrong eta^pair dependence,
-// no SFs). ONE definition (DefinePbPbRecoEffColumns) for every pull. Heap-held: RDF Defines are lazy.
+// Pb+Pb pair reco-efficiency PLACEHOLDER, anchored to pp24 (2026-10-13,
+// docs/tracking/crossx_raa_reco_binned_propagation_20261013.md §2, D4):
+//   eps_PbPb = C_Run2(pair-pT bin, centrality interval) * eps^{reco,SF}_j(reco pT, eta^pair, m)
+// C_Run2 = E_Run2(p,c)/E_Run2(p,60-80%), E_Run2 = the Run-2 single-muon MC placeholder product (colleague's
+// fits) averaged over eta^pair on the pp24 fullsim truth signal pairs -> Run 2 supplies ONLY the centrality
+// dependence; level, pT, eta^pair (gap acceptance), m and the data/MC SFs are the pp24 correction's. REPLACES
+// the per-pair eps_Run2(1)*eps_Run2(2) (no gap acceptance, wrong eta^pair dependence, no SFs, Run-2 level).
+// ONE definition (PbPbRecoEffPair) for every pull. Heap-held: RDF Defines are lazy.
 // =================================================================================================
 static PbPbRecoEffScaledPlaceholderEvaluator* s_pbpb_reco_eff = nullptr;
 static int s_pbpb_reco_eff_wp = -1;
@@ -1010,7 +1010,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
 
     OpenEffcyPtFitFile();
-    OpenPbPbRecoEffScaledPlaceholder(isTight);  // SCALED Run-2 reco-eff placeholder (E_Run2 * G; WP-matched)
+    OpenPbPbRecoEffScaledPlaceholder(isTight);  // pp24-anchored reco-eff placeholder (C_Run2 * eps^{reco,SF}; WP-matched)
 
     // SIGNAL REGION. MIGRATED 2026-09-08 (user decision D1,
     // docs/tracking/mu_pt45_gap125_pairpt9_adoption.md) from the retired standalone per-muon
@@ -1097,8 +1097,8 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
         .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
         .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-        // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/eps_PbPb, the SCALED Run-2 placeholder
-        // E_Run2(pT, centrality) * G(pT, eta^pair, m) (header block above PbPbRecoEffPair; floored at 0.05
+        // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/eps_PbPb, the pp24-anchored placeholder
+        // C_Run2(pT, centrality) * eps^{reco,SF}(pT, eta^pair, m) (header block above PbPbRecoEffPair; floored at 0.05
         // inside the evaluator; ctr < 0 -> no correction).
         .Define("effcy_reco_pair", PbPbRecoEffPair, {"pair_pt", "pair_eta", "minv", "avg_centrality"})
         .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0")

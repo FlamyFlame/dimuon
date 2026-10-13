@@ -24,7 +24,9 @@
 // Histograms (weights include weight * pp_crossx_lumi_factor except `counts`):
 //   h_pair_eta_fine_<w>[_ptK]  w in {counts, raw, trig, trig_reco_rb, trig_reco_tb}; K = coarse pT bin
 //   raw = no efficiency; trig = w_trig; trig_reco_rb = w_trig / eps^reco (reco-binned, NEW);
-//   trig_reco_tb = w_trig * w_reco (current applied truth-binned eps(pT, eta, dR)).
+//   trig_reco_tb = w_trig * w_reco (w_reco of AddPairEfficiencyWeightColumns: the truth-binned eps(pT, eta, dR)
+//                  when this macro was run (2026-10-11); since a2121af (2026-10-13) w_reco is the SF-corrected
+//                  reco-binned eps -- a rerun would mislabel this series).
 //
 // Usage (from Analysis/plotting_codes/reco_effcy/reco_binned/):
 //   root -l -b -q 'fill_pp24_data_pair_eta_smoothness.C+(true)'    // Tight
