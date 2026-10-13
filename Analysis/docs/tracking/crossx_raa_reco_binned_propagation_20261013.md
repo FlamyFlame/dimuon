@@ -14,7 +14,7 @@ GRL/ZDC cut, `ntuple_rerun_pp24_pbpb2526_20261013.md`, cannot finish in time). F
    placeholder is MC-derived (colleague's Run-2 MC TF1 fits) → corrected too.
 3. Read-only investigation: why R_AA at high pair pT is ≫ 1 (mistakes in the crossx process?). NO code changes from it.
 
-## Autonomy Contract (ACTIVE — re-read on every compaction)
+## Autonomy Contract (DONE 2026-10-13 13:50 — Done items (a)–(g) met; see Latest Stage)
 - Mandate: run autonomously to DONE; do NOT pause to confirm progress. Finishing a
   plan, a passing small test, or one pipeline stage is NOT a stopping point.
 - Done = (a) SF-weighted reco-binned pp24 ε product + scaled Pb+Pb placeholder product built and verified;
@@ -120,9 +120,9 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
 | 1 | Freeze old NTuples | §3e | — | DONE 00:45 |
 | 2 | SF-cells filler + pp product builder + Pb+Pb product builder | §3a–c | /review-analysis-code (§2–4) | DONE (review running) |
 | 3 | RDF pp + Pb+Pb w_reco | §3d | /review-analysis-code | DONE a2121af (review running) |
-| 4 | Worktree run: pp RDF + plots, Pb+Pb RDF ×4 + plots, MC–data, R_AA | §3e | /review-plot | |
+| 4 | Worktree run: pp RDF + plots, Pb+Pb RDF ×4 + plots, MC–data, R_AA | §3e | /review-plot | DONE; /review-plot APPROVED it.5 |
 | 5 | Investigation (subagent, read-only) | item 3 | — (read-only, reported to user) | DONE 01:15 |
-| 6 | Docs, INDEX, commits | — | — | |
+| 6 | Docs, INDEX, commits | — | — | DONE |
 
 ## Progress Log
 - **Step 1 (00:45).** Frozen copies (cp -p, mtimes kept): pp24 2mu4 nominal (10-06) + single_mu4 res_cut_v2 (09-09)
@@ -159,6 +159,11 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
   unchanged 2204.65 pb; no-gap 2699.76 pb)). Final data RDF with the D5 SF marker 13:00–13:03 (pp ∫ 4483.6 pb). Plots
   13:05–13:20 incl. D8/D9. /review-plot it.2 running. NOTE: wall clock — the 11:00 deadline passed while a user question
   was pending (≈02:15 → ≈12:35); the D4/D5 crossx/R_AA plots had been at the canonical paths since ≈02:00.
+
+- **Step 4d (13:25–13:50).** /review-plot it.2–5 (layout only after it.2; numerics MATCH throughout): R_AA mode 4 as a
+  graph (pp OS−SS ≤ 0 and empty Pb+Pb cells skipped; negatives shown; off-scale arrows; labels in a header strip), mode 1
+  log x, physical legend wording; MC–data signal: linear y for η^pair/m, computed legend headroom, physical SS/OS wording.
+  APPROVED it.5 (`.claude/logs/review-plot-20261013-015902-crossx-raa-reco-binned-plots.md`).
 
 ## Results & Observations
 ### R1 — muon SFs (pp24 fullsim, Tight R pairs)
@@ -344,8 +349,16 @@ History: 09-10 (3 yrs) flat because the Run-2 Pb+Pb placeholder (absolute, own e
 
 
 ## Remaining Work
+- (USER) η-dependent Pb+Pb reco eff (Run-3 overlay) or stopgap η factor (R4); pp 2mu4 hybrid per-|η^pair| calibration /
+  systematic (R4 item 2) and the >74 GeV over-correction (R3).
+- Re-run everything on the NEW GRL/lumi NTuples once the other session's rerun is final (drop the run-only worktree
+  branch `crossx_old_grl_run_20261013`, whose TEMP commit holds the old lumis + frozen inputs).
 - SF statistical + systematic uncertainties (incl. D5 SF=1 variation) not propagated.
 - Steps 4–6 (rerun with D4/D5, plots, reviews, commit).
 
 ## Latest Stage
-13:25 — /review-plot it.2 running (all result plots incl. D8 R_AA pT-in-η and D9). Then: close review, commit docs, INDEX row, report.
+DONE 2026-10-13 13:50. Final outputs at the canonical paths (OLD GRL/lumi): pp24 crossx (`plots/single_b_analysis/pp24/`),
+Pb+Pb combined crossx (`plots/single_b_analysis/pbpb_23_24_25_26_combined/`), R_AA (`plots/single_b_analysis/RAA/`, incl.
+`raa_pair_pt_in_eta_subplots_ctr*`), MC–data (`plots/mc_data_compr/signal/`), stage/sanity (`plots/sanity_check_crossx/`).
+Hist inputs: `dimuon_data/{pp_2024,pbpb_20YY}/histograms_real_pairs_*nominal.root` (13:03). Reviews: code APPROVED it.3, plots
+APPROVED it.5.
