@@ -15,6 +15,8 @@
 #include "MuonObjectsParamsAndHelpers/ParamsSet.h"
 #include "Utilities/PairEtaPanelBins.h"   // coarse pair-eta panels (crossx binning) + alignment guard
 #include <TLine.h>
+#include <TGraphErrors.h>
+#include <TArrow.h>
 #include <stdexcept>
 
 class RAAPlotting{
@@ -492,8 +494,11 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 	for (size_t ic = 0; ic < line_var_rebins.size(); ++ic){
 		const int z1 = line_var_rebins[ic].front(), z2 = line_var_rebins[ic].back();
 		const int clo = ParamsSet::ctrbins.at(z1 - 1), chi = ParamsSet::ctrbins.at(z2);
-		std::vector<TH1D*> hr(npan, nullptr);
-		double ymax = 0.;
+		// R_AA per cell as a GRAPH so undefined cells (pp OS-SS <= 0) are explicitly NOT drawn, while a
+		// zero / negative Pb+Pb OS-SS over a positive pp IS drawn (it is information).
+		std::vector<TGraphErrors*> gr(npan, nullptr);
+		std::vector<TH1D*> frame(npan, nullptr);
+		double ymax_prec = 0., ymin_draw = 0.;
 		for (int ip = 0; ip < npan; ++ip){
 			const auto bpp = PairEtaPanels::Bins(h2d_crossx_pp->GetYaxis(), panels[ip], "RAA_plotting mode 4 (pp)");
 			const auto bpb = PairEtaPanels::Bins(h3d_crossx_pbpb_op->GetYaxis(), panels[ip], "RAA_plotting mode 4 (Pb+Pb)");
@@ -501,21 +506,27 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			TH1D* hpb = h3d_crossx_pbpb_op->ProjectionX(Form("hpb_c%zu_e%d", ic, ip), bpb.first, bpb.second, z1, z2, "e");
 			hpp->Scale(1., "width");
 			hpb->Scale(1., "width");
-			TH1D* h = (TH1D*)hpb->Clone(Form("hraa_c%zu_e%d", ic, ip));
-			h->SetDirectory(nullptr);
-			for (int ib = 1; ib <= h->GetNbinsX(); ++ib){
+			TGraphErrors* g = new TGraphErrors();
+			for (int ib = 1; ib <= hpb->GetNbinsX(); ++ib){
 				const double a = hpb->GetBinContent(ib), ea = hpb->GetBinError(ib);
 				const double b = hpp->GetBinContent(ib), eb = hpp->GetBinError(ib);
-				const double r = (b != 0.) ? a / b : 0.;
-				const double er = (a != 0. && b != 0.) ? r * std::sqrt((ea/a)*(ea/a) + (eb/b)*(eb/b)) : 0.;
-				h->SetBinContent(ib, r);
-				h->SetBinError(ib, er);
-				ymax = std::max(ymax, r);
+				if (!(b > 0.)) continue;   // pp OS-SS <= 0: R_AA undefined in this cell
+				const double r = a / b;
+				const double er = std::sqrt(ea * ea / (b * b) + (r * r) * (eb * eb) / (b * b));
+				const int n = g->GetN();
+				g->SetPoint(n, hpb->GetXaxis()->GetBinCenter(ib), r);
+				g->SetPointError(n, 0.5 * hpb->GetXaxis()->GetBinWidth(ib), er);
+				if (er < 0.5 * std::fabs(r)) ymax_prec = std::max(ymax_prec, r + er);   // well-measured cells set the range
+				ymin_draw = std::min(ymin_draw, r);
 			}
+			frame[ip] = (TH1D*)hpb->Clone(Form("hframe_c%zu_e%d", ic, ip));
+			frame[ip]->SetDirectory(nullptr);
+			frame[ip]->Reset();
 			delete hpp; delete hpb;
-			hr[ip] = h;
+			gr[ip] = g;
 		}
-		const double yhi = 1.6 * ymax;   // common linear R_AA range; headroom for the panel label
+		const double yhi = std::max(1.2, 1.6 * ymax_prec);   // linear R_AA; headroom for the panel label
+		const double ylo = (ymin_draw < 0.) ? -0.3 * yhi : 0.;  // show negative OS-SS fluctuations when present
 		TCanvas* c = new TCanvas(Form("c_raa_pt_eta_%zu", ic), "", 450 * ncol, 350 * nrow);
 		c->Divide(ncol, nrow);
 		for (int ip = 0; ip < npan; ++ip){
@@ -524,25 +535,39 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			gPad->SetLeftMargin(0.16);
 			gPad->SetBottomMargin(0.18);
 			gPad->SetRightMargin(0.04);
-			TH1D* h = hr[ip];
+			TH1D* h = frame[ip];
 			h->SetStats(0);
 			h->SetTitle("");
-			h->SetLineColor(line_var_colors.at(ic));
-			h->SetMarkerColor(line_var_colors.at(ic));
-			h->SetMarkerStyle(20);
-			h->SetMarkerSize(0.9);
-			h->SetLineWidth(2);
-			h->GetYaxis()->SetRangeUser(0., yhi);
+			h->GetYaxis()->SetRangeUser(ylo, yhi);
 			h->GetXaxis()->SetTitle("p_{T}^{pair} [GeV]");
 			h->GetYaxis()->SetTitle("R_{AA}");
 			h->GetXaxis()->SetTitleSize(0.06); h->GetYaxis()->SetTitleSize(0.06);
 			h->GetXaxis()->SetLabelSize(0.05); h->GetYaxis()->SetLabelSize(0.05);
 			h->GetXaxis()->SetTitleOffset(1.15);
 			h->GetXaxis()->SetMoreLogLabels();
-			h->Draw("E1");
+			h->Draw("AXIS");
 			TLine* one = new TLine(h->GetXaxis()->GetXmin(), 1., h->GetXaxis()->GetXmax(), 1.);
 			one->SetLineStyle(2); one->SetLineColor(kGray + 2);
 			one->Draw();
+			if (ylo < 0.) { TLine* zero = new TLine(h->GetXaxis()->GetXmin(), 0., h->GetXaxis()->GetXmax(), 0.); zero->SetLineColor(kGray); zero->Draw(); }
+			TGraphErrors* g = gr[ip];
+			g->SetLineColor(line_var_colors.at(ic));
+			g->SetMarkerColor(line_var_colors.at(ic));
+			g->SetMarkerStyle(20);
+			g->SetMarkerSize(0.9);
+			g->SetLineWidth(2);
+			g->Draw("P same");
+			// off-scale points: an arrow at the frame edge, pointing out
+			for (int k = 0; k < g->GetN(); ++k){
+				const double x = g->GetX()[k], y = g->GetY()[k];
+				if (y <= yhi && y >= ylo) continue;
+				const bool up = y > yhi;
+				const double y0 = up ? yhi - 0.12 * (yhi - ylo) : ylo + 0.12 * (yhi - ylo);
+				const double y1 = up ? yhi - 0.01 * (yhi - ylo) : ylo + 0.01 * (yhi - ylo);
+				TArrow* ar = new TArrow(x, y0, x, y1, 0.012, "|>");
+				ar->SetLineColor(line_var_colors.at(ic)); ar->SetFillColor(line_var_colors.at(ic)); ar->SetLineWidth(2);
+				ar->Draw();
+			}
 			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.055);
 			t.DrawLatex(0.20, 0.84, Form("%.1f < #eta^{pair} < %.1f", panels[ip].first, panels[ip].second));
 			if (ip == 0){
@@ -608,7 +633,8 @@ void RAAPlotting::RunPlotting(){
 	    // Upper-centre, compact: with the y-headroom below, the legend clears the
 	    // data bulk everywhere; placing it in x∈[0.30,0.70] also avoids the tall
 	    // low-stat error bars at the extreme eta acceptance edges (far left/right).
-	    TLegend* l = new TLegend(0.30,0.64,0.70,0.90);
+	    // right of the ATLAS/Internal block (x <= ~0.40), so the two never overlap
+	    TLegend* l = new TLegend(0.42,0.62,0.92,0.90);
 
 		l->SetBorderSize(0);
 		l->SetFillStyle(0);
@@ -689,6 +715,7 @@ void RAAPlotting::RunPlotting(){
 				}
 			}
 			h_RAA_cur_bin->SetLineColor(line_var_colors.at(iline));
+			h_RAA_cur_bin->SetMarkerColor(line_var_colors.at(iline));   // series distinguishable by marker too
 			h_RAA_cur_bin->SetLineWidth(2);
 			h_RAA_cur_bin->SetStats(0);
 
@@ -704,9 +731,9 @@ void RAAPlotting::RunPlotting(){
 		l->AddEntry("", legend_pp_label.c_str(), "");
 		// Composed from ParamsSet: this legend published the retired "> 8 GeV" after the cut moved
 		// to 9 (Binnings rule 5 -- label and axis must never be able to disagree).
-		l->AddEntry("", Form("m_{#mu#mu}#in(1.08,2.9), p_{T}^{pair}>%g GeV",
+		l->AddEntry("", Form("m_{#mu#mu}#in(1.08,2.9) GeV, p_{T}^{pair}>%g GeV",
 		                     ParamsSet::signal_pair_pt_min), "");
-		l->AddEntry("","OS #minus SS subtracted, tight WP","");
+		l->AddEntry("","opposite sign #minus same sign, tight WP","");
 		l->AddEntry("","reco-eff + T_{AA}: PLACEHOLDERS","");
 	    
 
@@ -725,6 +752,8 @@ void RAAPlotting::RunPlotting(){
 	    // acceptance-edge bins were very low-stat and spiked into the legend.)
 	    if (mode == 2) h_first->GetXaxis()->SetRangeUser(-ParamsSet::pair_eta_fiducial_max,
 	                                                      ParamsSet::pair_eta_fiducial_max);
+	    // mode 1: pT_bins_150 is LOG-binned -> log x (as the crossx and the mode-4 panels)
+	    if (mode == 1) { gPad->SetLogx(); h_first->GetXaxis()->SetMoreLogLabels(); }
 	    
 	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
 	    	TH1D* h_RAA_cur_bin = h_RAA_list.at(iline);

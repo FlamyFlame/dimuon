@@ -64,7 +64,9 @@ public:
         kin_title = Observable(kin_input).x_title;
         output_subdir = "signal";
         data_already_dsigma = true;   // the `*_dsigma` histograms already carry 1/L_int
-        logy = true;                  // 1D distributions, per the repo standard
+        // y scale: LINEAR by default (repo rule 2026-09-07); log only where the spectrum spans
+        // several decades -- dR, deta, dphi (2-4 decades). eta^pair and m_mumu span < 1 decade.
+        logy = !(kin_input == "pair_eta" || kin_input == "minv_zoomin");
     }
 
     ~PlotMCDataComprSignalKinematics(){}
@@ -105,13 +107,13 @@ void PlotMCDataComprSignalKinematics::Run(){
         const int i_data = 0;
 
         if (ksign == 0){
-            series.push_back({SignalMcKey(obs, McSignalCatAllSS()), "Pythia, all SS",
+            series.push_back({SignalMcKey(obs, McSignalCatAllSS()), "Pythia, all same-sign pairs",
                               kSignalMcColor, 21, nullptr});
         } else {
             series.push_back({SignalMcKey(obs, McSignalCatSingleB()), "Pythia, single-b",
                               kSignalMcColor, 21, nullptr});
             if (draw_mc_all_os)
-                series.push_back({SignalMcKey(obs, McSignalCatAllOS()), "Pythia, all OS",
+                series.push_back({SignalMcKey(obs, McSignalCatAllOS()), "Pythia, all opposite-sign pairs",
                                   kSignalMcRefColor, 22, nullptr});
         }
 
@@ -223,7 +225,8 @@ void PlotMCDataComprSignalKinematics::Run(){
         // Room at BOTH ends: the top strip is for the auto-placed legend, and a bottom gap is
         // what stops ROOT squeezing the box onto the lowest curve when the top happens to be taken.
         const double ylo = ymin * 0.25;
-        const double yhi = logy ? ymax * 6.0 : ymax * 1.35;
+        // headroom for the auto-placed legend (header + up to 3 entries) above the data
+        const double yhi = logy ? ymax * 30.0 : ymax * 1.7;
         if (logy) series[first].h->GetYaxis()->SetRangeUser(ylo, yhi);
         else      series[first].h->GetYaxis()->SetRangeUser(0., yhi);
         if (logy) McDataComprRatio::ApplyLogYLabelPolicy(series[first].h, ylo, yhi);
