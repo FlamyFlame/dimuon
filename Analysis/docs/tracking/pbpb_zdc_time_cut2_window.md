@@ -112,7 +112,15 @@ file, same t^A–t^C binning as the derivation) → `plots/single_b_analysis/eve
 - User: check the plots, finalize cut 2 → then NTuple rerun (25, 26) and downstream.
 
 ## Latest Stage
-2026-10-13 02:50: Step 5 cuts DONE for both years (above); overlays + per-run plots delivered. analysis-3d continues with the 4 FCal
+2026-10-13 13:00 — USER DECISION (supersedes the 2026 part of the Objective): with 522200 + 522041 dropped (D8, analysis-3d,
+commit 41cd9a1) the +0.8 ns 2026 t^A upper edge is unnecessary → REVERT 2026 to ±1.5 ns and rerun the 2026 event-selection
+chain (cuts + cuts_alt; event_level not needed — cut 1 does not depend on cut 2 and was re-derived with D8 at 01:04; then the
+4 FCal comparisons). The 2026 NTuples of 03:59 (analysis-3d, +0.8 window) become STALE → flag, not rerun (not requested).
+Backup of the +0.8 cuts files/plots: `cut2_a_hi_0p8_20261013/`. Also: per-run ZDC t^C vs t^A for 2025 (one panel per run,
+after cut 1) to see whether the off-centre t^A clusters (−1.4 shoulder, −3 blob) come from a few runs (then drop runs and keep
+a common ±1.5 window for all years) or from all runs.
+
+(previous) 2026-10-13 02:50: Step 5 cuts DONE for both years (above); overlays + per-run plots delivered. analysis-3d continues with the 4 FCal
 comparisons and the pbpb25/26 NTuple reruns. The user is finalizing cut 2 from the plots. Open flag: 2025 loses ≈9 % of
 HLT_mu4 0–80 % events at cut 2 (every run 4–11 %); the shoulder events look like real collisions → uncorrected yield loss
 unless treated as an efficiency.

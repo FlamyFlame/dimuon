@@ -129,7 +129,8 @@ inline double PbPbEvSelEvalCut(const TGraph* g, double x) {
 // old |t| < 1.5).  A fixed constant, not fitted.  Default +-1.5 ns on both sides.
 // USER DECISION 2026-10-12 (PROVISIONAL, being finalized from the event-selection plots):
 //   2025: t^A lower edge -0.6 ns (removes the t^A ~ -1.4 ns shoulder);
-//   2026: t^A upper edge +0.8 ns (removes the t^A in [1,2] ns cluster).
+//   2026: +-1.5 ns.  (A +0.8 ns t^A upper edge was used 2026-10-12/13 and REVERTED by the user 2026-10-13: the t^A in [1,2] ns
+//         cluster is essentially runs 522200 + 522041, which are dropped by PbPbBadRuns(26) (D8).)
 // Both clusters sit at nominal vertex z (not main-satellite collisions).
 // See Analysis/docs/tracking/pbpb_zdc_time_cut2_window.md.
 // The derivation writes these edges into the cuts file; readers MUST use PbPbReadZdcTimeWindow, which throws if the
@@ -141,7 +142,7 @@ inline PbPbZdcTimeWindow PbPbZdcTimeCut(int run_year) {
     PbPbZdcTimeWindow w{-1.5, 1.5, -1.5, 1.5};
     if (yr == 23 || yr == 24) return w;
     if (yr == 25) { w.a_lo = -0.6; return w; }
-    if (yr == 26) { w.a_hi =  0.8; return w; }
+    if (yr == 26) return w;   // +0.8 ns upper edge (2026-10-12) REVERTED 2026-10-13: dropping 522200/522041 (D8) removes the cluster
     throw std::runtime_error("PbPbZdcTimeCut: no ZDC time window defined for Pb+Pb year " + std::to_string(yr));
 }
 
