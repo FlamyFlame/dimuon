@@ -541,7 +541,7 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 		{
 			TLatex a; a.SetNDC();
 			a.SetTextFont(72); a.SetTextSize(0.24); a.DrawLatex(0.02, 0.62, "ATLAS");
-			a.SetTextFont(42); a.DrawLatex(0.095, 0.62, "Internal");
+			a.SetTextFont(42); a.DrawLatex(0.112, 0.62, "Internal");
 			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.17);
 			t.DrawLatex(0.24, 0.70, Form("%s, centrality %d-%d%%;   %s", legend_pbpb_label.c_str(), clo, chi, legend_pp_label.c_str()));
 			t.DrawLatex(0.24, 0.42, Form("m_{#mu#mu} #in (1.08, 2.9) GeV,  p_{T}^{pair} > %g GeV,  opposite sign #minus same sign,  tight WP",
