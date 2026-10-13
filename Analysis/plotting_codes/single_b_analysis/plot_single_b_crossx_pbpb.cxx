@@ -39,8 +39,15 @@ private:
             label_line3_ += DatasetTriggerMap::GetTriggerLabel(yr, "PbPb")
                             + " (20" + std::to_string(yr) + ")";
         }
+        if (ss_subtract) {
+            // Identical trigger in every year -> one name, freeing the header width for the marking.
+            bool same = true;
+            const std::string t0 = DatasetTriggerMap::GetTriggerLabel(year_paths_.front().first, "PbPb");
+            for (auto& [yr, path] : year_paths_) same = same && DatasetTriggerMap::GetTriggerLabel(yr, "PbPb") == t0;
+            label_line3_ = (same ? t0 : label_line3_) + ", opposite #minus same sign";
+        }
         label_line1_ = "Pb+Pb " + yrs_str + " combined";
-        label_line2_ = ss_subtract ? "tight WP, OS#minusSS" : "tight WP";
+        label_line2_ = "tight WP";
     }
 
     // SS twin of an OS histogram name, following the producer's convention: the OS eta-vs-pT 2D
@@ -52,9 +59,10 @@ private:
             return os_name.substr(0, 4) + "ss_" + os_name.substr(4);
         throw std::runtime_error("SsTwinName: cannot derive the SS twin of '" + os_name + "'");
     }
-    // Prefix for the y/z titles of the subtracted version (the right-aligned header lines are already
-    // as wide as the pad, so the OS-SS marking lives in the axis title, not the header).
-    std::string Ttl(const std::string& t) const { return ss_subtract ? "OS#minusSS " + t : t; }
+    // Prefix for the z titles of the subtracted 2D maps (which carry no header). The pT-in-eta subplot
+    // figures mark the subtraction in the header trigger line instead (BuildLabels): their y titles
+    // are already as tall as the pad. Physical wording, never bare OS/SS (plot-label rule).
+    std::string Ttl(const std::string& t) const { return ss_subtract ? "Opposite#minussame sign: " + t : t; }
 
     // The drawn label must describe the years that ACTUALLY contributed to THIS histogram, not the
     // years the job was asked to combine. GetCombined() already records them per histogram name and
@@ -250,6 +258,9 @@ public:
     // Every histogram is named ONCE in its canonical unsuffixed form and mapped onto the selected
     // family by PtAxisHist(), so no figure in a directory can end up on the other axis.
     void Run() override {
+        // The 'Opposite#minussame sign: ' z-title prefix makes the long minv title run off the canvas at the
+        // default size; shrink it for the subtracted set only (nominal layout untouched).
+        if (ss_subtract) { z_title_size = 0.032; z_title_offset = 1.6; }
         InitCombined();
 
         const auto ctr_bins   = DetectAvailableCtrBins();
@@ -281,21 +292,21 @@ public:
                     DrawPairPtByEtaWithDrLines(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                        Ttl("dN_{events}/dp_{T} [GeV^{-1}]"));
+                        "dN_{events}/dp_{T} [GeV^{-1}]");
                 }
                 {
                     const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
                     DrawPairPtByEta(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots.png",
-                        Ttl("dN_{events}/dp_{T} [GeV^{-1}]"));
+                        "dN_{events}/dp_{T} [GeV^{-1}]");
                 }
                 {
                     const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
                     DrawPairPtByEta(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots_nondifferential.png",
-                        Ttl("N_{events}"), false);
+                        "N_{events}", false);
                 }
             }
 
@@ -314,14 +325,14 @@ public:
                 DrawPairPtByEtaWithDrLines(
                     hn, L1For(hn, ctr_pct), label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]"));
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
             }
             {
                 const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr);
                 DrawPairPtByEta(
                     hn, L1For(hn, ctr_pct), label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
-                    Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]"));
+                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
             }
         }
 

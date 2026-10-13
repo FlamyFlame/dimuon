@@ -88,6 +88,10 @@ public:
     // centrality, normalisation) is long enough to cover the highest low-pT points (review-plot
     // 2026-10-13). Only adds empty space above the data; it can never hide a point.
     double subplot_ceil_pad = kCommonLogYCeilPad;
+    // z-axis title size of Save2DColz (default = the long-standing 0.045; a derived plotter whose z titles
+    // carry a prefix lowers it so the whole title stays on the canvas).
+    double z_title_size = 0.045;
+    double z_title_offset = 1.35;  // likewise (default = the previous literal)
 
     // Canonical (unsuffixed, NOMINAL, pT_bins_150) name -> the selected family's histogram name.
     // The default is the identity; the alternative is a single substring swap, following the
@@ -241,14 +245,14 @@ protected:
 
         hplot->GetXaxis()->SetTitleSize(0.05);
         hplot->GetYaxis()->SetTitleSize(0.05);
-        hplot->GetZaxis()->SetTitleSize(0.045);
+        hplot->GetZaxis()->SetTitleSize(z_title_size);
         hplot->GetXaxis()->SetLabelSize(0.04);
         hplot->GetYaxis()->SetLabelSize(0.04);
         hplot->GetZaxis()->SetLabelSize(0.035);
         hplot->GetYaxis()->SetTitleOffset(1.35);
 
         hplot->GetZaxis()->SetTitle(z_title.empty() ? "d^{2}N/d[X]d[Y]" : z_title.c_str());
-        hplot->GetZaxis()->SetTitleOffset(1.35);
+        hplot->GetZaxis()->SetTitleOffset(z_title_offset);
         hplot->Draw("colz");
         std::string full_path = output_dir + "/" + png_name;
         c.SaveAs(full_path.c_str());
