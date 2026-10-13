@@ -30,13 +30,16 @@
 //         NTuple truth fiducial muon pT > 4.5, |eta| < 2.4), TRUTH (pT, eta^pair, m) in cell j.
 //         NO truth gap cut.
 //   R_j : truth-matched OS pair, both muons reco-matched, passing the WP and the DATA reco signal
-//         selection incl. the gap cuts, RECO (pT, eta^pair, m) in cell j. Its truth may be ANYWHERE,
-//         including outside T (out-of-T feed-in; user decision 2026-10-11 (b): the data reco yield
-//         contains it, so it sits in the numerator and N[R_j] / eps^reco_j returns N[T_j]).
+//         selection incl. the gap cuts, RECO (pT, eta^pair, m) in cell j, whose TRUTH passes the truth
+//         signal selection (truth in T, any truth cell: migration within T is kept). User decision
+//         2026-10-13 (D7): truth-matched pairs whose truth fails the truth cuts (out-of-T feed-in) are
+//         template-fit FAKES, like the unmatched pairs, and are NOT in the numerator.
+//   The SF-corrected product (ValueSF) predates D7 and still carries the feed-in (option (b)); it is
+//   rebuilt only when D7 is propagated to the crossx.
 //
 // Numerator and denominator are binned in DIFFERENT kinematics (reco vs truth) on the SAME
 // canonical axes, so this is a ratio of yields, not a binomial efficiency: eps^reco_j > 1 is
-// possible (net feed-in) and is NOT capped (Physics Procedure §4.2; C_j < 1 is allowed).
+// possible (net in-T migration into the cell) and is NOT capped (Physics Procedure §4.2; C_j < 1 is allowed).
 //
 // EVALUATED AT THE DATA PAIR'S RECO (pair pT, eta^pair, m_mumu) -- the binning it is defined in, so
 // unlike PairRecoEffEvaluator (truth-binned, evaluated at reco as an approximation) this IS the
@@ -60,7 +63,7 @@ inline const char* Value() {
     return "eps^reco_j = N[R_j]/N[T_j], j = (pair pT, eta^pair, m_mumu) cell on the canonical axes; "
            "T_j = truth OS pair (any origin), truth signal cuts (mass window, pair pT; no gap cut), TRUTH "
            "kinematics in j; R_j = both reco-matched + WP + reco signal cuts incl. gap cuts, RECO kinematics "
-           "in j, truth anywhere (out-of-T feed-in INCLUDED, decision (b) 2026-10-11); no cap at 1; "
+           "in j, truth in T (out-of-T feed-in EXCLUDED = template-fit fake, decision D7 2026-10-13); no cap at 1; "
            "docs/tracking/pair_reco_eff_bin_by_bin_reco_binned.md";
 }
 // DATA-CORRECTED variant: every R_j pair weighted by the product of its two single-muon data/MC

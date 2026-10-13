@@ -9,7 +9,9 @@
 //   k = (i_pt * N_eta + i_eta) * N_m + i_m, 0-based, histogram bin k + 1.
 //
 // For a set S of cells (one 3D cell, a (pT, eta) column summed over m, a projection, everything):
-//   N[R_S] = sum_{j in S} R_j            (reco in S, truth anywhere -- incl. out-of-T feed-in)
+//   N[R_S] = sum_{j in S} sum_{i} M_ij   (reco in S, truth in T in ANY truth cell; user decision D7
+//                                         2026-10-13: out-of-T feed-in is a template-fit fake, NOT here)
+//   N[F_S] = sum_{j in S} R^all_j - N[R_S] (out-of-T feed-in, information only; R^all = h_cell_minv_R_<wp>)
 //   N[T_S] = sum_{i in S} T_i
 //   A      = sum_{i in S, j in S} M_ij   (truth in S AND reco in S)
 //   B = N[R_S] - A,  D = N[T_S] - A      (disjoint from A and from each other)
@@ -32,7 +34,7 @@
 struct MigrationCells {
     int npt = 0, neta = 0, nm = 0;
     const TH1D* T = nullptr;    // h_cell_minv_T          (truth cell)
-    const TH1D* R = nullptr;    // h_cell_minv_R_<wp>     (reco cell, truth anywhere)
+    const TH1D* R = nullptr;    // h_cell_minv_R_<wp>     (reco cell, truth anywhere: R^all = R + F)
     const TH1D* TR = nullptr;   // h_cell_minv_TR_<wp>    (truth cell, reco selected anywhere)
     const TH2D* M = nullptr;    // h_cell_minv_M_<wp>     (X truth cell, Y reco cell)
     int Cell(int ipt, int ieta, int im) const { return (ipt * neta + ieta) * nm + im; }   // 0-based
@@ -40,8 +42,9 @@ struct MigrationCells {
 
 struct CellRatio {
     double eps = 0, err = 0;       // eps^reco_S
-    double nT = 0, nR = 0, nA = 0; // N[T_S], N[R_S], A
+    double nT = 0, nR = 0, nA = 0; // N[T_S], N[R_S] (truth in T), A
     double s2T = 0, s2R = 0, s2A = 0;
+    double nF = 0;                 // N[F_S] out-of-T feed-in (information only)
     double eps_truth = 0, err_truth = 0, nTR = 0;   // truth-binned eps
     bool measured = false;         // N[T_S] > 0 and N[R_S] > 0
     bool truth_measured = false;   // N[T_S] > 0
@@ -51,16 +54,22 @@ struct CellRatio {
 inline CellRatio RatioOverCells(const MigrationCells& C, const std::vector<int>& cells)
 {
     CellRatio r;
-    double s2TR = 0;
+    double s2TR = 0, nRall = 0;
+    const int ncell = C.M->GetNbinsX();
     for (int k : cells) {
         r.nT  += C.T->GetBinContent(k + 1);   r.s2T  += std::pow(C.T->GetBinError(k + 1), 2);
-        r.nR  += C.R->GetBinContent(k + 1);   r.s2R  += std::pow(C.R->GetBinError(k + 1), 2);
+        nRall += C.R->GetBinContent(k + 1);
         r.nTR += C.TR->GetBinContent(k + 1);  s2TR   += std::pow(C.TR->GetBinError(k + 1), 2);
+        for (int i = 1; i <= ncell; ++i) {    // N[R_S]: reco cell k, truth in T (any truth cell)
+            r.nR  += C.M->GetBinContent(i, k + 1);
+            r.s2R += std::pow(C.M->GetBinError(i, k + 1), 2);
+        }
         for (int l : cells) {
             r.nA  += C.M->GetBinContent(k + 1, l + 1);
             r.s2A += std::pow(C.M->GetBinError(k + 1, l + 1), 2);
         }
     }
+    r.nF = nRall - r.nR;
     if (r.nT > 0) {
         r.truth_measured = true;
         r.eps_truth = r.nTR / r.nT;

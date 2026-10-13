@@ -10,7 +10,7 @@
 // selection (SetIOPathsHook: V1 _mindR_0_02 2mu4 ntuple), dataframe construction, WP filter
 // (ApplyMuonWorkingPointFilter), trigger-efficiency inputs (OpenEffcyPtFitFile,
 // OpenPairEfficiencyInputs) and weight columns (AddPairEfficiencyWeightColumns: w_trig = the hybrid
-// pair trigger weight, w_reco = the CURRENT applied truth-binned eps(pT, eta, dR)), and the
+// pair trigger weight, w_reco = the reco weight CURRENTLY applied in the crossx), and the
 // lumi factor pp_crossx_lumi_factor. It overrides ONLY
 //   * SetIOPathsHook  -> after the parent's, redirect output_file to THIS test's file (the base
 //                        InitOutput RECREATEs output_file, so this is what keeps the crossx hist file
@@ -22,11 +22,11 @@
 // RDFBasedHistFillingPP::FillHistogramsCrossx `signal_cuts`.
 //
 // Histograms (weights include weight * pp_crossx_lumi_factor except `counts`):
-//   h_pair_eta_fine_<w>[_ptK]  w in {counts, raw, trig, trig_reco_rb, trig_reco_tb}; K = coarse pT bin
-//   raw = no efficiency; trig = w_trig; trig_reco_rb = w_trig / eps^reco (reco-binned, NEW);
-//   trig_reco_tb = w_trig * w_reco (w_reco of AddPairEfficiencyWeightColumns: the truth-binned eps(pT, eta, dR)
-//                  when this macro was run (2026-10-11); since a2121af (2026-10-13) w_reco is the SF-corrected
-//                  reco-binned eps -- a rerun would mislabel this series).
+//   h_pair_eta_fine_<w>[_ptK]  w in {counts, raw, trig, trig_reco_rb, trig_reco_applied}; K = coarse pT bin
+//   raw = no efficiency; trig = w_trig; trig_reco_rb = w_trig / eps^reco (reco-binned MC-only product, D7 numerator);
+//   trig_reco_applied = w_trig * w_reco (w_reco of AddPairEfficiencyWeightColumns = the crossx-applied reco weight;
+//                  since a2121af (2026-10-13) the SF-corrected reco-binned eps^{reco,SF}, pre-D7 numerator incl. the
+//                  out-of-T feed-in; before that the truth-binned eps(pT, eta, dR)).
 //
 // Usage (from Analysis/plotting_codes/reco_effcy/reco_binned/):
 //   root -l -b -q 'fill_pp24_data_pair_eta_smoothness.C+(true)'    // Tight
@@ -84,13 +84,13 @@ protected:
             .Define("cw_raw", "crossx_weight")
             .Define("cw_trig", "crossx_weight * w_trig")
             .Define("cw_trig_reco_rb", "crossx_weight * w_trig * w_reco_rb")
-            .Define("cw_trig_reco_tb", "crossx_weight * w_trig * w_reco");
+            .Define("cw_trig_reco_applied", "crossx_weight * w_trig * w_reco");
 
         const std::vector<double> fine = PairEtaFineSmoothnessBins();
         const std::vector<double> ept = PairRecoEffRecoBinnedEvaluator::PtEdges();
         const std::vector<std::pair<std::string, std::string>> weights = {
             {"counts", ""}, {"raw", "cw_raw"}, {"trig", "cw_trig"},
-            {"trig_reco_rb", "cw_trig_reco_rb"}, {"trig_reco_tb", "cw_trig_reco_tb"}};
+            {"trig_reco_rb", "cw_trig_reco_rb"}, {"trig_reco_applied", "cw_trig_reco_applied"}};
         auto book = [&](ROOT::RDF::RNode d, const std::string& tag) {
             for (const auto& w : weights) {
                 const std::string n = "h_pair_eta_fine_" + w.first + tag;
@@ -126,7 +126,7 @@ protected:
         TNamed("definition",
                "pp24 2mu4 data, RDFBasedHistFillingPP crossx selection (df_op, WP filter, signal_cuts), weight*lumi; "
                "w_trig = AddPairEfficiencyWeightColumns; trig_reco_rb = /eps^reco(reco pT, eta^pair, m) coarse axes "
-               "(PairRecoEffRecoBinnedEvaluator); trig_reco_tb = *w_reco (applied truth-binned eps(pT,eta,dR)); "
+               "(PairRecoEffRecoBinnedEvaluator); trig_reco_applied = *w_reco (crossx-applied reco weight: SF-corrected reco-binned eps, pre-D7); "
                "eta^pair in pair_eta_fine_smoothness (=ParamsSet::pair_eta_measured_bins); "
                "docs/tracking/pair_reco_eff_bin_by_bin_reco_binned.md 3c").Write();
     }

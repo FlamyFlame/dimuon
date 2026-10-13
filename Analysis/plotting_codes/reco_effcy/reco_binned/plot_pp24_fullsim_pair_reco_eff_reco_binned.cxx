@@ -1,7 +1,7 @@
 // =================================================================================================
 // plot_pp24_fullsim_pair_reco_eff_reco_binned.cxx
 //
-// Views of the RECO-BINNED pair reco efficiency eps^reco = N[R](reco) / N[T](truth) on the canonical
+// Views of the RECO-BINNED pair reco efficiency eps^reco = N[R](reco; truth in T, D7) / N[T](truth) on the canonical
 // (pair pT, eta^pair, m_mumu) cells, all truth OS pairs, with the TRUTH-binned eps = N[T and R](truth)
 // / N[T](truth) on the same axes overlaid for comparison
 // (docs/tracking/pair_reco_eff_bin_by_bin_reco_binned.md §3b).
@@ -256,7 +256,7 @@ void plot_pp24_fullsim_pair_reco_eff_reco_binned(bool tight_WP = true)
     const CellRatio ri = RatioOverCells(C, all);
     int n_gt1 = 0;
     for (int c : all) { const CellRatio r = RatioOverCells(C, {c}); if (r.measured && r.eps > 1) ++n_gt1; }
-    tab << "Reco-binned pair reco efficiency eps^reco_S = N[R_S](reco) / N[T_S](truth) (pp24 fullsim FULL, " << wp_text
+    tab << "Reco-binned pair reco efficiency eps^reco_S = N[R_S](reco; truth in T, D7) / N[T_S](truth) (pp24 fullsim FULL, " << wp_text
         << ", all truth OS pairs), ratio of summed counts over each cell set S; truth-binned eps = N[T_S and R](truth)/N[T_S].\n"
         << "Input " << mig_path << "\nProduct " << prod_path << "\n"
         << Form("Inclusive: reco-binned %.5f+-%.5f, truth-binned %.5f+-%.5f (N[R]=%.5g, N[T]=%.5g, A=%.5g)\n",

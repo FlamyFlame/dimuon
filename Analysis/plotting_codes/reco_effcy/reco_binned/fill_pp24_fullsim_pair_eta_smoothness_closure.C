@@ -11,13 +11,15 @@
 // ntuple-processing output muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts_full.root, tree
 // muon_pair_tree_sign2 (all truth OS pairs), weight `weight`, pass_signal_truth / pass_signal_reco
 // from the SAME ParamsSet / RDFBasedHistFillingPythiaFullsim builders, T = inT, R = pair_pass_<wp> &&
-// pass_signal_reco. The definitions below are copied verbatim from that filler.
-// Also re-fills N[T_j], N[R_j] per (pT, eta^pair, m) cell and compares them with the migration file
-// cell by cell (consistency of the migration file with the CURRENT ntuple); THROWS on a mismatch.
+// pass_signal_reco && inT (truth in T; user decision D7 2026-10-13), F = pair_pass_<wp> && pass_signal_reco
+// && !inT (out-of-T feed-in = template-fit fake, kept for information). The definitions below are copied
+// verbatim from that filler.
+// Also re-fills N[T_j], N[R_j], N[R_j + F_j] per (pT, eta^pair, m) cell and compares them with the
+// migration file (T, sum_i M_ij, R) cell by cell (consistency with the CURRENT ntuple); THROWS on a mismatch.
 //
 // Output: pair_eta_smoothness_common.h SmoothnessMCFile():
-//   h_mcT_fine[_ptK], h_mcR_fine_raw_<wp>[_ptK], h_mcR_fine_corr_<wp>[_ptK]  (K = coarse pT bin;
-//   T panels by TRUTH pT, R panels by RECO pT).
+//   h_mcT_fine[_ptK], h_mcR_fine_raw_<wp>[_ptK], h_mcR_fine_corr_<wp>[_ptK], h_mcF_fine_raw_<wp>[_ptK]
+//   (K = coarse pT bin; T panels by TRUTH pT, R and F panels by RECO pT).
 //
 // Usage (from Analysis/plotting_codes/reco_effcy/reco_binned/):
 //   root -l -b -q 'fill_pp24_fullsim_pair_eta_smoothness_closure.C+'
@@ -33,6 +35,7 @@
 #include <TAxis.h>
 #include <TFile.h>
 #include <TH1D.h>
+#include <TH2D.h>
 #include <TNamed.h>
 #include <TROOT.h>
 #include <TSystem.h>
@@ -112,15 +115,21 @@ void fill_pp24_fullsim_pair_eta_smoothness_closure()
     for (int k = 0; k < npt; ++k)
         hs.push_back(dT.Filter(Form("t_pt == %d", k)).Histo1D(fineModel(Form("h_mcT_fine_pt%d", k)), "truth_pair_eta", "weight"));
     for (const std::string wp : {"tight", "medium"}) {
-        auto dR = df.Filter("pair_pass_" + wp + " && pass_signal_reco");
+        auto dRall = df.Filter("pair_pass_" + wp + " && pass_signal_reco");
+        auto dR = dRall.Filter("inT");    // D7: numerator population, truth in T
+        auto dF = dRall.Filter("!inT");   // out-of-T feed-in (template-fit fake), information only
         const std::string wc = "w_corr_" + wp;
         hs.push_back(dR.Histo1D(fineModel("h_mcR_fine_raw_" + wp), "pair_eta", "weight"));
         hs.push_back(dR.Histo1D(fineModel("h_mcR_fine_corr_" + wp), "pair_eta", wc));
+        hs.push_back(dF.Histo1D(fineModel("h_mcF_fine_raw_" + wp), "pair_eta", "weight"));
         hs.push_back(dR.Histo1D(cellModel("h_chk_cell_R_" + wp), "r_cell_minv_d", "weight"));
+        hs.push_back(dRall.Histo1D(cellModel("h_chk_cell_Rall_" + wp), "r_cell_minv_d", "weight"));
         for (int k = 0; k < npt; ++k) {
             auto d = dR.Filter(Form("r_pt == %d", k));
             hs.push_back(d.Histo1D(fineModel(Form("h_mcR_fine_raw_%s_pt%d", wp.c_str(), k)), "pair_eta", "weight"));
             hs.push_back(d.Histo1D(fineModel(Form("h_mcR_fine_corr_%s_pt%d", wp.c_str(), k)), "pair_eta", wc));
+            hs.push_back(dF.Filter(Form("r_pt == %d", k))
+                           .Histo1D(fineModel(Form("h_mcF_fine_raw_%s_pt%d", wp.c_str(), k)), "pair_eta", "weight"));
         }
     }
 
@@ -128,7 +137,8 @@ void fill_pp24_fullsim_pair_eta_smoothness_closure()
     for (auto& h : hs) h->Write();
     TNamed("input", in_file.c_str()).Write();
     TNamed("reco_binned_product", RecoBinnedProductFile().c_str()).Write();
-    TNamed("definition", "MC closure: T = inT (truth eta^pair), R = pair_pass_<wp> && pass_signal_reco (reco eta^pair), "
+    TNamed("definition", "MC closure: T = inT (truth eta^pair), R = pair_pass_<wp> && pass_signal_reco && inT (reco eta^pair; "
+                         "D7 2026-10-13), F = same but !inT (out-of-T feed-in, template-fit fake), "
                          "corr = weight / eps^reco(reco pT, eta^pair, m) coarse axes; selection verbatim from "
                          "fill_pp24_fullsim_pair_bin_migration.C; fine axis = ParamsSet::pair_eta_measured_bins").Write();
     fout.Close();
@@ -140,7 +150,11 @@ void fill_pp24_fullsim_pair_eta_smoothness_closure()
     std::unique_ptr<TFile> fo(TFile::Open(out_file.c_str(), "READ"));
     auto cmp = [&](const std::string& mine, const std::string& theirs) {
         auto* a = (TH1D*)fo->Get(mine.c_str());
-        auto* b = (TH1D*)fm->Get(theirs.c_str());
+        TH1D* b = nullptr;
+        if (theirs.rfind("h_cell_minv_M_", 0) == 0) {   // sum_i M_ij: reco cell j, truth in T (X under/overflow empty)
+            auto* m = (TH2D*)fm->Get(theirs.c_str());
+            if (m) b = m->ProjectionY((theirs + "_py").c_str(), 1, m->GetNbinsX());
+        } else b = (TH1D*)fm->Get(theirs.c_str());
         if (!a || !b) throw std::runtime_error("consistency: missing " + mine + " / " + theirs);
         double mx = 0;
         for (int i = 0; i <= ncell + 1; ++i) {
@@ -152,7 +166,9 @@ void fill_pp24_fullsim_pair_eta_smoothness_closure()
         if (mx > 1e-6) throw std::runtime_error("migration file NOT consistent with the current ntuple: " + theirs);
     };
     cmp("h_chk_cell_T", "h_cell_minv_T");
-    cmp("h_chk_cell_R_tight", "h_cell_minv_R_tight");
-    cmp("h_chk_cell_R_medium", "h_cell_minv_R_medium");
+    cmp("h_chk_cell_R_tight", "h_cell_minv_M_tight");
+    cmp("h_chk_cell_R_medium", "h_cell_minv_M_medium");
+    cmp("h_chk_cell_Rall_tight", "h_cell_minv_R_tight");
+    cmp("h_chk_cell_Rall_medium", "h_cell_minv_R_medium");
     std::cout << "[done] " << out_file << "\n";
 }

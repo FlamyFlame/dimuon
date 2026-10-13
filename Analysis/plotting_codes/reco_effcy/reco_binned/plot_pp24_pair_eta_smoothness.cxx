@@ -8,11 +8,11 @@
 // Figures (dir SmoothnessPlotDir()/<wp>/), each 9 panels = all p_T^pair + the 8 coarse p_T^pair bins,
 // coarse eta^pair cell edges as thin dashed lines:
 //   data_corrected_<wp>WP.png   dsigma/deta^pair: trigger + reco-binned eps (nominal test), trigger only,
-//                               trigger + truth-binned eps(pT, eta, dR) (currently applied);
-//                               ratio pad: truth-binned / reco-binned corrected
+//                               trigger + the crossx-applied reco weight (eps^{reco,SF}, pre-D7 numerator);
+//                               ratio pad: applied / reco-binned corrected
 //   data_vs_mc_truth_<wp>WP.png data (trigger + reco-binned) vs Pythia truth T shape normalised to the
 //                               data integral of the panel; ratio pad data / MC
-//   mc_closure_<wp>WP.png       MC R corrected by 1/eps^reco vs MC T; ratio pad corrected R / T
+//   mc_closure_<wp>WP.png       MC R (truth in T, D7) corrected by 1/eps^reco vs MC T; ratio pad corrected R / T
 //   smoothness_values_<wp>WP.txt
 // Smoothness numbers (per panel):
 //   * boundary steps: at every interior coarse boundary, the step of r = data/MC-shape between the
@@ -316,7 +316,7 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
         const std::string& tg = tags[p];
         TH1D* d_rb  = Get(fd.get(), "h_pair_eta_fine_trig_reco_rb" + tg);
         TH1D* d_tr  = Get(fd.get(), "h_pair_eta_fine_trig" + tg);
-        TH1D* d_tb  = Get(fd.get(), "h_pair_eta_fine_trig_reco_tb" + tg);
+        TH1D* d_tb  = Get(fd.get(), "h_pair_eta_fine_trig_reco_applied" + tg);
         TH1D* d_cnt = Get(fd.get(), "h_pair_eta_fine_counts" + tg);
         TH1D* mT    = Get(fm.get(), "h_mcT_fine" + tg);
         TH1D* mRc   = Get(fm.get(), "h_mcR_fine_corr_" + wp + tg);
@@ -326,8 +326,8 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
             d_cnt = ToCoarse(d_cnt, coarse); mT = ToCoarse(mT, coarse); mRc = ToCoarse(mRc, coarse);
             TH1D* d_raw = ToCoarse(Get(fd.get(), "h_pair_eta_fine_raw" + tg), coarse);
             TH1D* mT_n = ScaledTo(mT, d_rb->Integral(), "mTn" + tg);
-            ctab << "\n[" << labels[p] << "]  cell | data pairs | raw [pb] | trig [pb] | trig+reco-binned [pb] | trig+truth-binned [pb] | "
-                    "truth-/reco-binned | data(reco-binned)/MC truth (panel-normalised) | MC corrected R / T - 1\n";
+            ctab << "\n[" << labels[p] << "]  cell | data pairs | raw [pb] | trig [pb] | trig+reco-binned [pb] | trig+applied eps^{reco,SF} [pb] | "
+                    "applied/reco-binned | data(reco-binned)/MC truth (panel-normalised) | MC corrected R / T - 1\n";
             for (int c = 1; c <= d_rb->GetNbinsX(); ++c) {
                 const double rr = mT_n->GetBinContent(c) > 0 ? d_rb->GetBinContent(c) / mT_n->GetBinContent(c) : 0;
                 const double re = mT_n->GetBinContent(c) > 0 ? rr * std::hypot(d_rb->GetBinError(c) / std::max(d_rb->GetBinContent(c), 1e-300),
@@ -356,7 +356,7 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
         tab << "  boundary pulls (reco-binned eps):";
         for (size_t k = 0; k < st_rb.boundary_pulls.size(); ++k) tab << Form("  %+.4g:%+.2f", coarse[k + 1], st_rb.boundary_pulls[k]);
         tab << Form("   | reference rms %.2f (n=%d)\n", st_rb.ref_rms, st_rb.ref_n);
-        tab << "  boundary pulls (truth-binned eps(pT,eta,dR), comparison):";
+        tab << "  boundary pulls (crossx-applied eps^{reco,SF}, comparison):";
         for (size_t k = 0; k < st_tb.boundary_pulls.size(); ++k) tab << Form("  %+.4g:%+.2f", coarse[k + 1], st_tb.boundary_pulls[k]);
         tab << Form("   | reference rms %.2f (n=%d)\n", st_tb.ref_rms, st_tb.ref_n);
         tab << "  boundary pulls of data(reco-binned)/MC(corrected reco, normalised):";
@@ -365,7 +365,7 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
         tab << "  boundary pulls of MC closure corrected-R/T (R,T share events: indicative):";
         for (size_t k = 0; k < st_mc.boundary_pulls.size(); ++k) tab << Form("  %+.4g:%+.2f", coarse[k + 1], st_mc.boundary_pulls[k]);
         tab << Form("   | reference rms %.2f (n=%d)\n", st_mc.ref_rms, st_mc.ref_n);
-        tab << "  within-cell chi2/ndf  data(reco-binned) vs MC T | data(truth-binned) vs MC T | MC corrected R vs MC T | data(reco-binned) vs MC corrected R | MC closure sum(corrR)/sum(T)-1 [* = cell contains a 3D cell without eps measurement]\n";
+        tab << "  within-cell chi2/ndf  data(reco-binned) vs MC T | data(applied eps^{reco,SF}) vs MC T | MC corrected R vs MC T | data(reco-binned) vs MC corrected R | MC closure sum(corrR)/sum(T)-1 [* = cell contains a 3D cell without eps measurement]\n";
         double c2rb = 0, c2tb = 0, c2mc = 0, c2dr = 0; int nrb = 0, ntb = 0, nmc = 0, ndr = 0;
         for (size_t c = 0; c < cm.first.size(); ++c) {
             const auto a = CellChi2(d_rb, mT, cm.first[c], cm.last[c]);
@@ -402,25 +402,25 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
         PanelData A; A.label = labels[p];
         A.s = {{d_rb, "trigger + reco-binned #varepsilon_{reco}", kBlack, 20},
                {d_tr, "trigger only", kBlue + 1, 21},   // filled: open square (25) renders randomly black in batch PNG (ROOT 6.34)
-               {d_tb, "trigger + truth-binned #varepsilon_{reco}(p_{T}, #eta, #DeltaR)", kRed + 1, 24}};
+               {d_tb, "trigger + #varepsilon_{reco} #times SF (crossx)", kRed + 1, 24}};
         A.ratios = {{Ratio(d_tb, d_rb, "rA" + tg), "", kBlack, 20}};
         P1.push_back(A);
         PanelData B; B.label = labels[p];
         B.s = {{d_rb, "data, trigger + reco-binned #varepsilon_{reco}", kBlack, 20},
                {mT_d, "Pythia8 truth", kRed + 1, 1, true},
-               {mR_d, "Pythia8 reco / reco-binned #varepsilon_{reco}", kBlue + 1, 1, true}};
+               {mR_d, "Pythia8 reco (truth in signal region) / reco-binned #varepsilon_{reco}", kBlue + 1, 1, true}};
         B.ratios = {{r_dm, "", kRed + 1, 20}, {r_dr, "", kBlue + 1, 24}};
         P2.push_back(B);
         TH1D* mTc = static_cast<TH1D*>(mT->Clone(("mTc" + tg).c_str())); mTc->SetDirectory(nullptr);
         TH1D* mRcc = static_cast<TH1D*>(mRc->Clone(("mRcc" + tg).c_str())); mRcc->SetDirectory(nullptr);
         if (coarse_eta) { mTc->Scale(1.0, "width"); mRcc->Scale(1.0, "width"); }   // unequal coarse widths
         PanelData C; C.label = labels[p];
-        C.s = {{mRcc, "reco level / reco-binned #varepsilon_{reco}", kBlack, 20},
+        C.s = {{mRcc, "reco level (truth in signal region) / reco-binned #varepsilon_{reco}", kBlack, 20},
                {mTc, "truth level", kRed + 1, 1, true}};
         C.ratios = {{r_mc, "", kBlack, 20}};
         P3.push_back(C);
     }
-    tab << Form("\nSUM over the 8 pT panels: within-cell chi2/ndf data(reco-binned) %.1f/%d (p=%.3g), data(truth-binned) %.1f/%d (p=%.3g), "
+    tab << Form("\nSUM over the 8 pT panels: within-cell chi2/ndf data(reco-binned) %.1f/%d (p=%.3g), data(applied eps^{reco,SF}) %.1f/%d (p=%.3g), "
                 "MC corrected R vs T %.1f/%d (p=%.3g), data(reco-binned) vs MC corrected R %.1f/%d (p=%.3g)\n"
                 "MC closure: max |sum(corrR)/sum(T) - 1| per coarse cell: pT panels %.3e, all pT %.3e; cells containing a 3D cell "
                 "without eps measurement (marked *) %.3e\n",
@@ -430,14 +430,14 @@ void plot_pp24_pair_eta_smoothness(bool tight_WP = true, bool coarse_eta = false
     tab.close(); ctab.close();
     if (!coarse_eta) std::cout << Form("[closure] max |sum(corrR)/sum(T)-1| per coarse cell: pT panels %.3e, all pT %.3e, cells w/ unmeasured 3D cell %.3e\n",
                       max_closure_dev, max_closure_dev_incl, max_closure_dev_unmeas);
-    if (!coarse_eta) std::cout << Form("[chi2] within-cell sum over pT panels: data rb vs T %.1f/%d, data tb vs T %.1f/%d, MC corrR vs T %.1f/%d, data rb vs MC corrR %.1f/%d\n",
+    if (!coarse_eta) std::cout << Form("[chi2] within-cell sum over pT panels: data rb vs T %.1f/%d, data applied vs T %.1f/%d, MC corrR vs T %.1f/%d, data rb vs MC corrR %.1f/%d\n",
                       chi2_rb_tot, ndf_rb_tot, chi2_tb_tot, ndf_tb_tot, chi2_mc_tot, ndf_mc_tot, chi2_dr_tot, ndf_dr_tot);
 
     const std::string hdr_data = "pp 2024 data, #sqrt{s} = 5.36 TeV, 2mu4";
     const std::string sel = "opposite-sign pairs, signal region";
     const std::string sfx = coarse_eta ? "_coarse_eta_" : "_";
     DrawFigure(outdir + "data_corrected" + sfx + wp + "WP.png", hdr_data, wp_text, sel, P1, coarse,
-               "d#sigma/d#eta^{pair} [pb]", "truth-/reco-binned", 0.8, 1.2);
+               "d#sigma/d#eta^{pair} [pb]", "crossx/reco-binned", 0.8, 1.2);
     DrawFigure(outdir + "data_vs_mc_truth" + sfx + wp + "WP.png", hdr_data, wp_text,
                sel + "; Pythia8 normalised to the data integral of each panel", P2, coarse,
                "d#sigma/d#eta^{pair} [pb]", "data / MC", coarse_eta ? 0.5 : 0.0, coarse_eta ? 1.5 : 2.0);

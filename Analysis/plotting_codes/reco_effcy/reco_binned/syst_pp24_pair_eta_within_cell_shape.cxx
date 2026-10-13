@@ -19,7 +19,7 @@
 // histograms (reco / truth eta^pair). Systematic = |delta_c| (symmetric). Stat error of delta from toys:
 // data = Poisson on the raw pair count n_k of the bin (h_pair_eta_fine_counts), D_k = n_k x the bin's mean
 // trigger weight; eps_k Gaussian with a binomial width from N_eff of T_k (approximation: R_k is not a strict
-// subset of T_k because of feed-in), and eps_c is RECOMPUTED per toy as sum T_k eps_k / sum T_k from the
+// subset of T_k because of bin migration, reco vs truth eta^pair), and eps_c is RECOMPUTED per toy as sum T_k eps_k / sum T_k from the
 // same toy eps_k (eps_c and eps_k are fully correlated; holding eps_c fixed inflates the error).
 // delta uses the m-integrated cell eps (pT-summed for merged groups), an approximation to the shift of the
 // applied 3D (m-resolved) correction. D_k contains the data background (fake/hadronic pairs) that the
