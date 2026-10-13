@@ -185,6 +185,9 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
 
     chain.SetBranchAddress("b_HLT_mu4_L1MU3V",        &b_HLT);
     chain.SetBranchAddress("RunNumber",                 &run_num);
+    UInt_t lbn = 0;
+    chain.SetBranchStatus("lbn", 1);
+    chain.SetBranchAddress("lbn", &lbn);
     chain.SetBranchAddress("FCal_Et_P",                 &FCal_Et_P);
     chain.SetBranchAddress("FCal_Et_N",                 &FCal_Et_N);
     chain.SetBranchAddress("zdc_ZdcEnergy",              zdc_E);
@@ -193,6 +196,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     chain.SetBranchAddress("trk_numqual",               &trk_numqual);
 
     const auto bad_runs = PbPbBadRuns(yr);
+    const auto bad_lbs  = PbPbBadLBRanges(yr);
     const Long64_t ntot = chain.GetEntries();
     std::cout << Form("PbPb 20%d: processing %lld events...\n", yr, ntot);
     Long64_t n_pass = 0;
@@ -200,7 +204,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
     for (Long64_t i = 0; i < ntot; ++i) {
         chain.GetEntry(i);
         if (!b_HLT) continue;
-        if (bad_runs.count(run_num)) continue;
+        if (PbPbIsBadRunLB(bad_runs, bad_lbs, run_num, lbn)) continue;
 
         const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
         const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;

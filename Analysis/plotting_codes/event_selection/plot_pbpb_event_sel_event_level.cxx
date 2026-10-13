@@ -29,6 +29,7 @@
 #include "TLegend.h"
 #include "TLine.h"
 #include "TVectorD.h"
+#include "../../NTupleProcessingCode/PbPbEventSelConfig.h"  // PbPbBadRuns / PbPbBadLBRanges
 // kFCalBinsPbPb2023 / CentralityFromFCal2023 — centrality recalculation from FCal ET,
 // for the years listed in UsesFCalCentralityRecompute().  The table is a MIRROR
 // of PairPbPbExtras::FCal_ET_Bins_PbPb2023 rounded to 5 s.f. (40 of 85 entries differ);
@@ -230,7 +231,8 @@ private:
         chain.SetMakeClass(1);
         chain.SetBranchStatus("*", 0);
 
-        Int_t   b_HLT_mu4 = 0;
+        Int_t   b_HLT_mu4 = 0, run_num = 0;
+        UInt_t  lbn = 0;
         Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
         Float_t zdc_E[2]  = {}, zdc_t[2] = {};
         std::vector<int>* trk_numqual = nullptr;
@@ -248,6 +250,16 @@ private:
         chain.SetBranchAddress("zdc_ZdcEnergy",     zdc_E);
         chain.SetBranchAddress("zdc_ZdcTime",       zdc_t);
         chain.SetBranchAddress("trk_numqual",       &trk_numqual);
+        // Data-quality run/LB exclusion -- applied before ANY cut derivation
+        chain.SetBranchStatus("RunNumber", 1);
+        chain.SetBranchStatus("lbn",       1);
+        chain.SetBranchAddress("RunNumber", &run_num);
+        chain.SetBranchAddress("lbn",       &lbn);
+        const auto bad_runs = PbPbBadRuns(run_year_);
+        const auto bad_lbs  = PbPbBadLBRanges(run_year_);
+        if (!bad_runs.empty() || !bad_lbs.empty())
+            std::cout << "Excluding " << bad_runs.size() << " bad run(s) and "
+                      << bad_lbs.size() << " bad-LB range(s) from PbPb 20" << yr_ << std::endl;
 
         const Long64_t n = chain.GetEntries();
         std::cout << "Processing " << n << " events (Pb+Pb 20" << yr_ << ")" << std::endl;
@@ -256,6 +268,7 @@ private:
         for (Long64_t i = 0; i < n; ++i) {
             chain.GetEntry(i);
             if (!b_HLT_mu4) continue;
+            if (PbPbIsBadRunLB(bad_runs, bad_lbs, run_num, lbn)) continue;
             ++n_pass;
 
             const float fcal_A  = FCal_Et_P * 1e-6f;       // MeV → TeV; [0]=A-side
@@ -1160,9 +1173,16 @@ private:
         }
         chain.SetMakeClass(1);
         chain.SetBranchStatus("*", 0);
-        Int_t   b_HLT_mu4 = 0, centrality = -1;
+        Int_t   b_HLT_mu4 = 0, centrality = -1, run_num = 0;
+        UInt_t  lbn = 0;
         Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
         Float_t zdc_E[2] = {}, zdc_t[2] = {};
+        chain.SetBranchStatus("RunNumber", 1);
+        chain.SetBranchStatus("lbn",       1);
+        chain.SetBranchAddress("RunNumber", &run_num);
+        chain.SetBranchAddress("lbn",       &lbn);
+        const auto bad_runs = PbPbBadRuns(run_year_);
+        const auto bad_lbs  = PbPbBadLBRanges(run_year_);
         chain.SetBranchStatus("b_HLT_mu4_L1MU3V", 1);
         chain.SetBranchStatus("centrality",        1);
         chain.SetBranchStatus("FCal_Et_P",         1);
@@ -1188,6 +1208,7 @@ private:
         for (Long64_t i = 0; i < n; ++i) {
             chain.GetEntry(i);
             if (!b_HLT_mu4) continue;
+            if (PbPbIsBadRunLB(bad_runs, bad_lbs, run_num, lbn)) continue;
 
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
             // Enforce the PbPb2023 calibration for the years listed in

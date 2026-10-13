@@ -227,9 +227,10 @@ public:
         gStyle->SetPalette(kBird);
         gSystem->mkdir(out_dir_.c_str(), true);
         bad_runs_ = PbPbBadRuns(run_year_);
-        if (!bad_runs_.empty())
-            std::cout << "Excluding " << bad_runs_.size()
-                      << " bad run(s) from PbPb 20" << yr_ << std::endl;
+        bad_lbs_  = PbPbBadLBRanges(run_year_);
+        if (!bad_runs_.empty() || !bad_lbs_.empty())
+            std::cout << "Excluding " << bad_runs_.size() << " bad run(s) and "
+                      << bad_lbs_.size() << " bad-LB range(s) from PbPb 20" << yr_ << std::endl;
         BookHists();
         LoadCut1();
         DerivePerRunPreampCuts();  // no-op for 23/24; populates per_run_preamp_cuts_ for 25/26
@@ -248,6 +249,7 @@ private:
     float cut3_preamp_A_ = 385.f;
     float cut3_preamp_C_ = 385.f;
     std::unordered_set<int> bad_runs_;
+    std::vector<PbPbBadLBRange> bad_lbs_;
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
     TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
@@ -356,6 +358,7 @@ private:
         chain.SetBranchStatus("*", 0);
 
         Int_t   b_HLT = 0, run_num = 0;
+        UInt_t  lbn = 0;
         Float_t FCal_Et_P = 0.f, FCal_Et_N = 0.f;
         Float_t zdc_E[2] = {}, zdc_t[2] = {};
         Float_t preamp[2][4] = {};
@@ -370,6 +373,8 @@ private:
 
         chain.SetBranchAddress("b_HLT_mu4_L1MU3V",         &b_HLT);
         chain.SetBranchAddress("RunNumber",                  &run_num);
+        chain.SetBranchStatus("lbn", 1);
+        chain.SetBranchAddress("lbn", &lbn);
         chain.SetBranchAddress("FCal_Et_P",                  &FCal_Et_P);
         chain.SetBranchAddress("FCal_Et_N",                  &FCal_Et_N);
         chain.SetBranchAddress("zdc_ZdcEnergy",              zdc_E);
@@ -384,7 +389,7 @@ private:
         for (Long64_t i = 0; i < n_tot; ++i) {
             chain.GetEntry(i);
             if (!b_HLT) continue;
-            if (bad_runs_.count(run_num)) continue;
+            if (PbPbIsBadRunLB(bad_runs_, bad_lbs_, run_num, lbn)) continue;
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
             const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
             if (zdc_tot > (float)PbPbEvSelEvalCut(g_cut1_, fcal_AC)) continue;  // Cut 1
@@ -493,6 +498,9 @@ private:
 
         chain.SetBranchAddress("b_HLT_mu4_L1MU3V",         &b_HLT);
         chain.SetBranchAddress("RunNumber",                  &run_num_ev);
+        UInt_t lbn_ev = 0;
+        chain.SetBranchStatus("lbn", 1);
+        chain.SetBranchAddress("lbn", &lbn_ev);
         chain.SetBranchAddress("FCal_Et_P",                 &FCal_Et_P);
         chain.SetBranchAddress("FCal_Et_N",                 &FCal_Et_N);
         chain.SetBranchAddress("zdc_ZdcEnergy",             zdc_E);
@@ -507,7 +515,7 @@ private:
         for (Long64_t i = 0; i < n_total; ++i) {
             chain.GetEntry(i);
             if (!b_HLT) continue;
-            if (bad_runs_.count(run_num_ev)) continue;
+            if (PbPbIsBadRunLB(bad_runs_, bad_lbs_, run_num_ev, lbn_ev)) continue;
             ++n_HLT_;
 
             EvDataAlt ev;
