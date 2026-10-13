@@ -125,7 +125,76 @@ N_sig/L = (N_HLT/L) × (N_evsel/N_HLT) × (N_sig/N_evsel).
   2026-09-17 NTuple (these runs are not affected by the LB exclusion).
 - Evidence only — NO run-exclusion or cut-change recommendation (memory feedback_run_exclusion_needs_experts).
 
+**Factored plots, all years (2026-10-12)**, in `plots/data_qa/signal_yield_factored_per_run/`:
+- **Definitions.** N_HLT_mu4 = raw-skim events with event-level `b_HLT_mu4_L1MU3V`, good runs/LBs, BEFORE the 5 event-selection
+  cuts. The skim has already applied: ≥ 1 configured trigger, original GRL, no detector error flags, ≥ 1 vertex, required ZDC data
+  present. N_evsel,0–80% = of those, passing cuts 1–5 with centrality [0,80): no muon-level or pair-level cut. N_sig/N_evsel
+  therefore holds every muon/pair effect, and N_evsel/L holds trigger, skim/DAQ completeness, lumi and event-selection efficiency.
+- **PbPb24, PbPb25:** no deviating run (all within 8 % of the median N_HLT/L, evsel > 95 %, |sig/ev pull| < 3). Year evsel pass:
+  99.30 % (2024), 97.20 % (2025). (2023: 99.63 %, 2026: 98.49 %.)
+- **pp24** (user choice: N_HLT from the unprescaled analysis trigger HLT_2mu4_L12MU3V; HLT_mu4 is prescaled ×400–870, which would
+  make N_sig/N_HLT_mu4 scale with the prescale). New code: `hlt_events_per_run.cxx` (raw-NTUP count; `/pnfs` read over xrootd)
+  and `pp_norm_factors.cxx` → `pp24_hlt_events_per_lumi_per_run.png`, `pp24_signal_per_hlt_event_per_run.png`,
+  `pp24_run_norm_factors.csv`. **488239: N_HLT_2mu4/L = 5.80×10⁴ pb vs 2.82×10⁴ pb for the full runs (2.06×); N_sig/N_HLT =
+  0.0463 vs ≈0.0457, normal.** So the 2× N/L excess sits entirely in triggered events per lumi (lumi or trigger configuration of this
+  low-lumi run), not in the analysis. 488210 (0.04 pb⁻¹): 1.05×, consistent.
+- Shared plot style: `per_run_factor_plot.h` (`DrawPerRunFactor`).
+
+**463315 single-muon η–φ** (`muon_eta_phi_run_vs_rest.cxx` → `plots/data_qa/pbpb23_run463315/muons/`). Muons taken from the pair NTuple
+(no single-muon tree), each muon counted once per event; panels: run, other runs, ratio. Grid 0.25 × π/8 (QA display axis).
+(a) muons of all Tight pairs OS+SS: 21 509 muons; (b) muons of OS Tight signal pairs: 1 348. χ²/ndf = 373/319 (p = 0.019) for both. The
+near-identical χ² was checked: the histograms differ and a manual χ² matches `Chi2TestX`, so it is a coincidence. The ratio map is flat,
+with NO localized hole or deficit, only a mild excess spread over the map. Consistent with 463315 being normal in everything except events/lumi.
+
 **Rule recorded (user 2026-10-12):** diagnosis plots are exempt from `/review-plot` (`.claude/CLAUDE.md` §Auto-Dispatch Rules).
 
+---
+# Round 3 (2026-10-12): skim bookkeeping of PbPb23 463315 / 462759
+
+## Requests (user, 2026-10-12)
+R3a. Find the skimming logs / grid tasks for 463315 and 462759 and check whether something went wrong in the skim.
+R3b. Submit a small grid re-skim of just these two runs (`SkimCode/run_23hi/`).
+
+## Plan
+Task IDs from `~/usatlasdata/dimuon_data/may2026_skim.txt`; BigPanDA task/job JSON per input dataset; per-LB skim counts
+vs GRL; download/hadd record in `grid_monitor_status.log`; per-file test = read EventInfo (LB, eventNumber, detector
+error flags) of sampled AOD files and count what fraction of each file's events is in the skim.
+
+## Findings R3
+- Tasks: 462759 → 50267236 (part2), 463315 → 50267250 (part3). JEDI: every input file of both runs `finished`
+  (462759 393/393, 1 818 081 ev; 463315 2302/2302, 10 456 893 ev); no failed/abandoned files (the 78 abandoned files of
+  part2 are all run 462969 → recovery part5). Grid output datasets are now empty (expired).
+- Download + hadd lossless: 210/210 merged part3 files downloaded, pre-merge entries = 44 525 454 = `data_pbpb23_part3.root`.
+- Lumi and skim GRL agree (463315: 402 LBs, 462759: 76 LBs, same in GRL v120-pro33-03 and the HLT_mu4 lumitable).
+- AOD events / lumi is NORMAL for both runs (0.248 and 0.237 ×10⁹/nb vs 0.23–0.26 for the neighbouring runs); the deficit
+  is skimmed HLT_mu4 events / AOD event: 463315 0.165, 462759 0.296 vs 0.35–0.41 for neighbours.
+- Per-LB skim counts: 101 of 402 GRL LBs of 463315 and 14 of 76 of 462759 have ZERO skimmed events; present LBs have
+  quantized-looking counts (~1 000 / ~3 500 / ~7 000 / ~19 000). Reference runs 463308 / 462763 have no such gaps.
+- Skim code (`fe3b18b` `TrigRates::execute`): events are silently dropped (no job error) by `CleaningCuts`
+  (errorState==Error in Pixel/SCT/TRT/Muon/LAr/Tile/Core, or Core flag bit 18) or by failing all listed triggers.
+- R3b submitted: jediTaskID **53029101**, `user.yuhang.TrigRates.dimuon.PbPb2023data.Oct2026.v1.rerun463315_462759.`
+  (`run_23hi/grid_sub_rerun_463315_462759.sh`, `InDstxt_PbPb2023data_rerun_463315_462759.txt`; HEAD source, same GRL/mode;
+  local 200-event test OK). Name has NO `partN` on purpose: never auto-merge into `data_pbpb23_partN` (double counting).
+
+- **ROOT CAUSE (R3a): JEDI `--mergeOutput` left finished job outputs unmerged.** Per-file test (EventInfo of sampled
+  AODs vs the skim's eventNumbers): each AOD file is all-or-nothing, either 0.33–0.44 of its events in the skim (the
+  normal HLT_mu4 fraction) or exactly 0. 463315: 37/61 files (61 %) absent, 0 detector-error-flagged events in any file.
+  462759: 10/40 (25 %) absent. Expected N_HLT/AOD = 0.39×0.39 ≈ 0.15 and 0.40×0.75 ≈ 0.30, observed 0.165 and 0.296, so
+  the missing files account for the whole deficit. Example: AOD `_000550/_000551` → job 7139059832 (DESY-HH, finished,
+  exit 0, 2.95 MB output `panda.um...EXT0._002502`). That output has status `ready` and NO pmerge job consumed it, whereas
+  the good job's output `_002354` was merged by pmerge 7140576483 into `EXT0._000053`. Counting the inputs of all merge jobs
+  (210 + 228): part3 merged 9 666 of 10 378 finished job outputs (**712 orphaned, 6.9 %**), part2 9 506 of 9 568 (62).
+  Confirmed `ready`-never-merged outputs so far: 109 (part3) + 49 (part2). 608 more part3 lookups were rate-limited by
+  BigPanDA; not yet attributed to runs. The skim CODE is not at fault (the jobs ran and wrote output); this is a merge-step
+  loss on the grid, invisible to task status (`done` 100 %) and to the download/hadd check.
+- Caveat for 53029101: it also uses `--mergeOutput`, so it can lose files the same way. Check its per-LB completeness
+  against the AOD before trusting it.
+- Possible other victims: 463380 (N_HLT/AOD 0.350, N_HLT/L 0.91× the neighbours) and 463364 (0.367), both part3. The
+  other May-2026 tasks (2023 parts 1/4, 2024, 2025, pp24) have NOT been audited for orphaned outputs.
+- Scratch evidence (session scratchpad, not kept): task/job JSONs, `match_out.txt`, `perlb_*.csv`.
+
 ## Latest Stage
-2026-10-12: R1 replotted (522336/522355 waiting for good-LB lumi); R2a–d delivered. Open: (1) good-LB lumitable from the updated GRL → redraw pbpb26; (2) rerun pbpb26 per-run + pair plots after the Step-17 NTuple hadd; (3) experts/user: 463315 skim bookkeeping, 2026 ZDC-time shift in 522041/522200.
+2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
+submitted. Open: audit every May-2026 task for orphaned outputs; recover the missing files of 463315/462759 (e.g. from
+53029101 once checked complete) → user decision on how to integrate (replace runs in part2/3, no double counting).
+Previous: R1 replotted (522336/522355 waiting for good-LB lumi); R2a–d delivered. Open: (1) good-LB lumitable from the updated GRL → redraw pbpb26; (2) rerun pbpb26 per-run + pair plots after the Step-17 NTuple hadd; (3) experts/user: 463315 skim bookkeeping, 2026 ZDC-time shift in 522041/522200.
