@@ -186,3 +186,49 @@
 {"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-10-13T03:15:29Z","criticals":0,"warnings":0,"slug":"pp24-grl-lb-exclusion"}
 {"event":"start","command":"review-note","task":"datasets.tex pp24 GRL+lumi","slug":"datasets-pp24-grl-lumi","timestamp":"2026-10-13T03:23:17Z"}
 {"event":"end","command":"review-note","status":"approved","iterations":1,"timestamp":"2026-10-13T03:24:14Z","criticals":0,"warnings":0,"slug":"datasets-pp24-grl-lumi"}
+{"event":"start","command":"review-analysis-code","task":"Review mc_request_stats_boost.cxx and final run","slug":"mc-request-stats-boost","timestamp":"2026-09-25T02:36:33-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":4,"timestamp":"2026-09-25T03:00:50-04:00","criticals":0,"warnings":0,"slug":"mc-request-stats-boost"}
+{"event":"start","command":"review-plot","task":"Review sanity figures of the additional-MC-request grid test","slug":"mc-request-test-sanity","timestamp":"2026-09-25T03:01:03-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-09-29T00:33:35-04:00","criticals":0,"warnings":0,"slug":"mc-request-test-sanity"}
+{"event":"start","command":"review-analysis-code","task":"Redefine truth signal acceptance A_sig as mass-window acceptance (no gap cuts) + plots","slug":"signal-acceptance-mass-window","timestamp":"2026-10-05T22:53:59-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-10-05T23:08:07-04:00","criticals":0,"warnings":0,"slug":"signal-acceptance-mass-window"}
+{"event":"start","command":"review-plot","task":"pair reco-eff origin test + views","slug":"pair-reco-eff-views","timestamp":"2026-10-06T02:13:19-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-10-06T02:23:00-04:00","criticals":0,"warnings":0,"slug":"pair-reco-eff-views"}
+{"event":"start","command":"review-analysis-code","task":"signal acceptance round 2 (cutflow, 44-bin eta, POWHEG no-res NTuple)","slug":"signal-acceptance-round2","timestamp":"2026-10-06T04:29:16-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-10-06T04:37:54-04:00","criticals":0,"warnings":0,"slug":"signal-acceptance-round2"}
+{"event":"start","command":"review-analysis-code","task":"reco-eff all-OS switch + mass-axis 3D","slug":"reco-eff-op-and-mass-axis","timestamp":"2026-10-06T11:32:35-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-10-06T11:39:27-04:00","criticals":0,"warnings":0,"slug":"reco-eff-op-and-mass-axis"}
+{"event":"start","command":"review-plot","task":"mass-axis reco-eff views","slug":"reco-eff-mass-views","timestamp":"2026-10-06T11:39:38-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":4,"timestamp":"2026-10-06T11:48:23-04:00","criticals":0,"warnings":0,"slug":"reco-eff-mass-views"}
+{"event":"start","command":"review-analysis-code","task":"pair bin migration filler + plotter math","slug":"pair-bin-migration-filler","timestamp":"2026-10-06T20:10:09-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-10-06T20:21:32-04:00","criticals":0,"warnings":0,"slug":"pair-bin-migration-filler"}
+{"event":"start","command":"review-plot","task":"pair bin migration plot set","slug":"pair-bin-migration-plots","timestamp":"2026-10-06T20:21:40-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-10-06T20:35:25-04:00","criticals":0,"warnings":0,"slug":"pair-bin-migration-plots"}
+{"event":"start","command":"review-note","task":"IntNote reco-eff all-OS update + trigger up to date","slug":"reco-eff-all-os-note","timestamp":"2026-10-07T00:54:35-04:00"}
+{"event":"end","command":"review-note","status":"escalated","iterations":5,"timestamp":"2026-10-07T01:29:54-04:00","criticals":0,"warnings":1,"unresolved":["iteration-5 WARNING (3.5-47% scope) fixed after last review, not re-reviewed"],"slug":"reco-eff-all-os-note"}
+{"event":"start","command":"review-analysis-code","task":"signal-acceptance TARGET-mode code review","slug":"sigacc-target-mode","timestamp":"2026-10-07T17:27:20-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-10-07T17:38:22-04:00","criticals":0,"warnings":0,"slug":"sigacc-target-mode"}
+{"event":"start","command":"review-analysis-code","task":"D3 change to bin-migration plotter: bin-by-bin efficiency naming, purity denominator sum_{i in T} M_ij, o_j removed from plots","slug":"bin-migration-d3-purity","timestamp":"2026-10-08T15:14:00-04:00"}
+{"event":"start","command":"review-plot","task":"D3-updated bin-migration plot set","slug":"bin-migration-d3-plots","timestamp":"2026-10-08T15:14:27-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-10-08T15:20:19-04:00","criticals":0,"warnings":0,"slug":"bin-migration-d3-plots"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":4,"timestamp":"2026-10-08T15:23:32-04:00","criticals":0,"warnings":0,"slug":"bin-migration-d3-purity"}
+{"event":"start","command":"review-plot","task":"PbPb26/25 evsel run/LB/ZDC-vtx diagnostics","slug":"pbpb26-evsel-run-lb-diag","timestamp":"2026-10-08T16:44:19-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":5,"timestamp":"2026-10-08T17:29:25-04:00","criticals":0,"warnings":0,"slug":"pbpb26-evsel-run-lb-diag"}
+{"event":"start","command":"review-plot","task":"Coarse-eta view of pp24 data eta^pair smoothness test","slug":"coarse-eta-smoothness","timestamp":"2026-10-11T17:42:44-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-10-11T17:51:35-04:00","criticals":0,"warnings":0,"slug":"coarse-eta-smoothness"}
+{"event":"start","command":"review-analysis-code","task":"PbPb2026 bad run/LB exclusion D7","slug":"pbpb26-bad-run-lb","timestamp":"2026-10-12T18:26:14-04:00"}
+{"event":"start","command":"review-analysis-code","task":"2026-10-13 D8 + pp24 part13 + pp data-QA bad-LB filter + rerun drivers","slug":"d8-part13-ppqa-drivers","timestamp":"2026-10-13T00:14:26-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-10-13T00:34:24-04:00","criticals":0,"warnings":0,"slug":"d8-part13-ppqa-drivers"}
+{"event":"start","command":"review-note","task":"IntNote Pb+Pb 2026 datasets/lumi/GRL/D7/D8","slug":"pbpb26-datasets-grl","timestamp":"2026-10-13T00:34:57-04:00"}
+{"event":"end","command":"review-note","status":"approved","iterations":2,"timestamp":"2026-10-13T00:45:30-04:00","criticals":0,"warnings":0,"slug":"pbpb26-datasets-grl"}
+{"event":"start","command":"review-analysis-code","task":"Review commit a2121af reco-binned SF eps + PbPb scaled placeholder","slug":"reco-binned-sf-propagation","timestamp":"2026-10-13T00:56:03-04:00"}
+{"event":"start","command":"review-plot","task":"regenerated crossx/RAA/MC-data result plots after reco-binned SF propagation","slug":"crossx-raa-reco-binned-plots","timestamp":"2026-10-13T01:59:02-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-10-13T02:07:54-04:00","criticals":0,"warnings":0,"slug":"reco-binned-sf-propagation"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":3,"timestamp":"2026-10-13T04:38:01-04:00","criticals":0,"warnings":0,"slug":"pbpb26-bad-run-lb"}
+{"event":"end","command":"review-plot","status":"approved","iterations":5,"timestamp":"2026-10-13T13:43:10-04:00","criticals":0,"warnings":0,"slug":"crossx-raa-reco-binned-plots"}
+{"event":"start","command":"review-analysis-code","task":"OS-SS subtraction crossx pass review","slug":"ss-subtr-crossx-pass","timestamp":"2026-10-13T16:44:02-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":2,"timestamp":"2026-10-13T16:52:31-04:00","criticals":0,"warnings":0,"slug":"ss-subtr-crossx-pass"}
+{"event":"start","command":"review-plot","task":"OS-SS subtr crossx figures","slug":"ss-subtr-crossx-figures","timestamp":"2026-10-13T16:52:59-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":3,"timestamp":"2026-10-13T17:00:31-04:00","criticals":0,"warnings":0,"slug":"ss-subtr-crossx-figures"}
+{"event":"start","command":"review-plot","task":"os-ss example pair_pt_in_eta figures","slug":"os-ss-example-pair-pt-in-eta","timestamp":"2026-10-13T19:56:23-04:00"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-10-13T19:59:22-04:00","criticals":0,"warnings":0,"slug":"os-ss-example-pair-pt-in-eta"}

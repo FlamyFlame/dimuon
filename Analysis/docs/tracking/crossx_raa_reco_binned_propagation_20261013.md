@@ -362,3 +362,7 @@ Pb+Pb combined crossx (`plots/single_b_analysis/pbpb_23_24_25_26_combined/`), R_
 `raa_pair_pt_in_eta_subplots_ctr*`), MC–data (`plots/mc_data_compr/signal/`), stage/sanity (`plots/sanity_check_crossx/`).
 Hist inputs: `dimuon_data/{pp_2024,pbpb_20YY}/histograms_real_pairs_*nominal.root` (13:03). Reviews: code APPROVED it.3, plots
 APPROVED it.5.
+
+### Progress Log — OS / SS / OS−SS illustration figures (2026-10-13, user request)
+- New macro `plotting_codes/single_b_analysis/plot_os_ss_example_pair_pt_in_eta.cxx` -> `plots/single_b_analysis/os_ss_examples/{pp24, pbpb_23_24_25_26_combined_ctr0_10, ..._ctr50_80}_pair_pt_in_eta_subplots_os_ss.png` (3 lines/panel: opposite sign, same sign, opposite−same). pp from `h2d_[ss_]crossx_pair_pt_pair_eta_binned_w_signal_cuts`; Pb+Pb from the `*_ss_subtr_crossx.root` hists, lumi-weighted over years; run from the old-GRL worktree (old 2026 lumi).
+- Pb+Pb 0–10 % is not a filled bin: Y = Σ Y_i D_i / Σ D_i over 0–5 %, 5–10 %, D_i = 1/crossx_factor_i (read from PbPbBaseClass, f_i σ <T_AA>_i L; derivation independently verified). /review-plot approved at iteration 2.
