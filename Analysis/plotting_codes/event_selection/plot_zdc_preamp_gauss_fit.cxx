@@ -189,11 +189,21 @@ static YearHists ProcessYear(int yr) {
     chain.SetBranchAddress("zdc_ZdcModulePreSampleAmp", preamp);
 
     long long n_sel = 0;
+    // Data-quality run/LB exclusion (PbPbEventSelConfig.h) -- before any cut
+    Int_t  dq_run = 0;
+    UInt_t dq_lbn = 0;
+    chain.SetBranchStatus("RunNumber", 1);
+    chain.SetBranchStatus("lbn",       1);
+    chain.SetBranchAddress("RunNumber", &dq_run);
+    chain.SetBranchAddress("lbn",       &dq_lbn);
+    const auto dq_bad_runs = PbPbBadRuns(yr);
+    const auto dq_bad_lbs  = PbPbBadLBRanges(yr);
     const Long64_t n = chain.GetEntries();
     std::cout << "20" << yr << ": " << n << " events..." << std::flush;
     for (Long64_t i = 0; i < n; ++i) {
         chain.GetEntry(i);
         if (!b_HLT) continue;
+        if (PbPbIsBadRunLB(dq_bad_runs, dq_bad_lbs, dq_run, dq_lbn)) continue;
         const float fcal_AC = (FCal_P + FCal_N) * 1e-6f;
         const float zdcTot  = (zdcE[0] + zdcE[1]) / 1000.f;
         if (zdcTot > (float)PbPbEvSelEvalCut(g_cut1, fcal_AC)) continue; // Cut1

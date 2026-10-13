@@ -198,9 +198,11 @@ void PbPbExtras<Derived>::InitEventSel() {
   f->Close();
 
   evsel_bad_runs_ = PbPbBadRuns(self().run_year % 2000);
-  if (!evsel_bad_runs_.empty())
+  evsel_bad_lbs_  = PbPbBadLBRanges(self().run_year % 2000);
+  if (!evsel_bad_runs_.empty() || !evsel_bad_lbs_.empty())
     std::cout << "PbPbExtras::InitEventSel: excluding " << evsel_bad_runs_.size()
-              << " bad run(s) for PbPb 20" << (self().run_year % 2000) << std::endl;
+              << " bad run(s) and " << evsel_bad_lbs_.size()
+              << " bad-LB range(s) for PbPb 20" << (self().run_year % 2000) << std::endl;
 
   std::cout << "PbPbExtras::InitEventSel: loaded cuts from " << path << std::endl;
 
@@ -208,9 +210,9 @@ void PbPbExtras<Derived>::InitEventSel() {
 
 template <class Derived>
 bool PbPbExtras<Derived>::PassEventSel() const {
-  // Exclude bad runs (e.g. problematic detector conditions)
-  if (!evsel_bad_runs_.empty() &&
-      evsel_bad_runs_.count(static_cast<int>(self().RunNumber)))
+  // Exclude bad runs / bad LBs (data quality; PbPbEventSelConfig.h) -- before any cut
+  if (PbPbIsBadRunLB(evsel_bad_runs_, evsel_bad_lbs_,
+                     static_cast<int>(self().RunNumber), self().lbn))
     return false;
 
   const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;              // MeV → TeV
