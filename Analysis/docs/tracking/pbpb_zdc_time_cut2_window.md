@@ -72,9 +72,54 @@ checks the event-selection plots to finalize cut 2 before it is propagated to th
 - Docs: `docs/data_analysis.md` cut table; memory `project_pbpb_event_selection`.
 
 ## Results & Observations
+**Cut-2 preview (2026-10-13 00:00)** — scratch RDF macro `cut2_preview.cxx` (HLT_mu4, good run/LB, cut 1 from the pre-change
+file, same t^A–t^C binning as the derivation) → `plots/single_b_analysis/event_selection/pbpb_20{25,26}/cut2_window_preview/`
+(`event_sel_cut2_ZDC_time_standalone_*.png`, `event_sel_cut2_ZDC_time_A_1D_*.png`).
+| Year | events after cut 1 | new cut 2 keeps | t^A window new/old (t^C in window) |
+|---|---|---|---|
+| 2025 | 260 593 971 | 88.76 % | 0.9076 |
+| 2026 | 247 162 145 | 97.83 % | 0.9865 |
+- 2026: the +0.8 ns edge sits in the dip between the main peak and the +1.3 ns cluster: a clean cut.
+- 2025: the −0.6 ns edge sits on the rising flank of the main peak (≈2×10⁶ per 0.05 ns vs ≈1.4×10⁷ at the peak). It removes the
+  −1.5…−0.6 ns plateau (≈1.3×10⁶/bin) AND part of the main peak's low tail (≈9 % of the old-window events). Open question
+  for the user: if the plateau comes from specific runs with shifted ZDC timing, the cut removes good collisions there while
+  their lumi stays in.
+**Per-run effect** (`cut2_per_run.cxx`; events passing cut 1, t^C inside its window; new t^A window / old |t^A|<1.5):
+- 2025: ALL 42 runs 0.887–0.963 (median 0.909). The −1.4 ns shoulder is in every run → NOT a bad-run effect. Since those
+  events sit at nominal vertex z (Step 16), the new edge plausibly removes ≈9 % of REAL collisions in every run, i.e. a ≈9 %
+  inefficiency that the lumi normalization does not correct. **Flagged to the user.**
+- 2026: 522200 0.145, 522041 0.193 (whole collision peak shifted to ≈+1 ns, see data_per_run_signal_yield_qa.md R2);
+  522949 0.985; all others ≥ 0.991 (median 0.9995). The +1.3 ns "cluster" is ≈ these two runs: the +0.8 edge effectively
+  removes them while their lumi (50.72 + 2.48 µb⁻¹ = 2.2 % of 2026) stays in. The user has meanwhile decided (analysis-3d
+  session) to DROP 522200 + 522041 "like D7, before evsel" → after that edit to `PbPbBadRuns(26)`, the 2026 derivation must be
+  rerun (the running one includes them). analysis-3d informed 2026-10-13 00:05; it reruns NTuples for pp24/25/26 after the
+  event selection is done → ping it on completion.
 
 ## Remaining Work
 - User: check the plots, finalize cut 2 → then NTuple rerun (25, 26) and downstream.
 
 ## Latest Stage
-2026-10-13: steps 1–4 done; step 5 chain running (scratch driver `run_cut2_chain.sh`: cuts + cuts_alt 25 ∥ 26, then 4 FCal comparisons). Next: validate outputs (freshness + keys), before/after table, /review-analysis-code (user: no /review-plot for these single-value cut changes).
+2026-10-13 00:45: HAND-OVER. The analysis-3d session (tracking doc `ntuple_rerun_pp24_pbpb2526_20261013.md`) killed my 2026
+redo (SIGTERM 00:39) and runs `pipelines/run_evsel26_fcal_ntuple_20261013.sh`: 2026 event_level → cuts → cuts_alt (own
+build dir, checks "Excluding 4 bad run(s)"), then waits on my 2025 chain PID and checks the 2025 cuts files are fresh, then the
+4 FCal comparisons (parallel), then the pbpb25 + pbpb26 NTuple reruns. This session owns ONLY the running 2025 cuts + cuts_alt
+(PID 3824921); 2026 / FCal / NTuples are analysis-3d's. Old event-selection plots backed up (`pre_cut2_window_20261012/` in
+each 2025/2026 plot dir + FCal comparison dirs). Next here: old-vs-new acceptance overlays (per-cut + cumulative, 25 and 26)
+once both years' new cuts exist (old counts from `restore_alt_cuts_20260922.log` / `run_pbpb_all_23_25_26_20260916b.log` /
+`logs/pbpb26_badlb_evsel_ntuple_20261012.log`; new from this session's cuts logs (25) and analysis-3d's (26)).
+
+(previous) 2026-10-13 00:20: 2025 cuts + cuts_alt still running (started 23:45). 2026 RESTARTED ~00:15 on the reduced run list: the
+analysis-3d session added 522200 + 522041 to `PbPbBadRuns(26)` (user "D8", temporary; UNCOMMITTED edit 00:03 on top of
+e17c97e). The first restart still printed "Excluding 2 bad run(s)" because ACLiC reused the in-source `.so` compiled at 23:45
+despite the header change. Now force-rebuilt (`.cxx++`, separate build dir): "Excluding 4 bad run(s) and 2 bad-LB range(s)";
+the driver aborts otherwise. Driver `run_cut2_26_redo.sh` then waits for 2025 and checks all 4 cuts files are fresh → ping
+analysis-3d (my 00:05 heads-up EXPIRED undelivered, held by that session's permission mode) → FCal comparisons (4 parallel).
+The 2026 cut-2 preview / per-run numbers were made BEFORE the drop (they include 522200/522041).
+
+(previous) 2026-10-13 ~00:00: step 5 running. cuts + cuts_alt for 25 ∥ 26 started 23:45 (reference durations: cuts(26) 47 min,
+cuts_alt(26) 45 min). The top-level driver was stopped so the 4 FCal comparisons could run IN PARALLEL (distinct output
+files; serially they took 3 h 44 min on 2026-09-16). A waiter (exits on both year chains' OK/FAIL or on their PIDs
+vanishing) starts them. Separately: a fast RDF preview of the cut-2 standalone (+ 1D t^A) for 25/26 →
+`plots/single_b_analysis/event_selection/pbpb_20YY/cut2_window_preview/` (user asked for the cut-2 plot first).
+Commits: e17c97e (code), 3a0a1bf (INDEX restore + row; e17c97e had accidentally reverted other sessions' INDEX rows
+through a truncate-before-read bug in my staging snippet; restored exactly, net diff = 1 added row).
