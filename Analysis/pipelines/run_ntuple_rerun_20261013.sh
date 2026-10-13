@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-off (2026-10-13): data NTuple rerun for ONE dataset (pp24 | pbpb25 | pbpb26), tracking doc
+# One-off (2026-10-13): data NTuple rerun for ONE dataset (pp24 | pbpb23 | pbpb25 | pbpb26), tracking doc
 # docs/tracking/ntuple_rerun_pp24_pbpb2526_20261013.md: nominal (crossx) + trigger-efficiency variants,
 # Condor submit -> wait (held / >2 h running = FAIL, no silent hang) -> validate -> hadd.
 # The previous combined files are copied to <data dir>/pre_rerun_20261013/ first.
@@ -7,7 +7,7 @@
 # Last line of the log is always "ALL DONE <ds>" or "FATAL <ds>: ...".
 source /usatlas/u/yuhanguo/setup.sh >/dev/null 2>&1
 set -uo pipefail
-DS=${1:?usage: $0 pp24|pbpb25|pbpb26}
+DS=${1:?usage: $0 pp24|pbpb23|pbpb25|pbpb26}
 A=/usatlas/u/yuhanguo/workarea/dimuon_codes/Analysis
 if [[ -n ${VERIFY_ONLY:-} && -z ${T0_OVERRIDE:-} ]]; then echo "VERIFY_ONLY needs T0_OVERRIDE (epoch <= submission time)"; exit 1; fi
 T0=${T0_OVERRIDE:-$(date +%s)}
@@ -18,6 +18,9 @@ case $DS in
   pp24)   D=~/usatlasdata/dimuon_data/pp_2024;   NQ=13; PFX=pp_2024
           SUBS=(run_pp_24.sub run_pp_24_nominal.sub)
           TAGS=(single_mu4_mindR_0_02_res_cut_v2 2mu4_mindR_0_02) ;;
+  pbpb23) D=~/usatlasdata/dimuon_data/pbpb_2023; NQ=6;  PFX=pbpb_2023   # part6 = re-skimmed lost events of 463315/462759
+          SUBS=(run_pbpb_23.sub run_pbpb_23_nominal.sub)
+          TAGS=(single_mu4_mindR_0_02_res_cut_v2 single_mu4_mindR_0_02) ;;
   pbpb25) D=~/usatlasdata/dimuon_data/pbpb_2025; NQ=7;  PFX=pbpb_2025
           SUBS=(run_pbpb_25.sub run_pbpb_25_nominal.sub)
           TAGS=(single_mu4_mindR_0_02_res_cut_v2 single_mu4_mindR_0_02) ;;

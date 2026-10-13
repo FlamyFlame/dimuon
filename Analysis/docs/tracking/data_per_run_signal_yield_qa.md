@@ -249,7 +249,29 @@ Rucio files on LGD cannot be rewritten, so the lost events go into a NEW supplem
 - NOT done (needs user go-ahead): PbPb23 NTuple processing for part6 and everything downstream (event-selection cuts
   derived from the 2023 part list, PbPb23 crossx/trig-eff hadd, combined PbPb crossx, per-run QA replot).
 
+# Round 5 (2026-10-13): PbPb23 rerun with part6
+
+## Request (user, 2026-10-13 ~16:30)
+Rerun the PbPb23 NTuple processing and the other PbPb23-only steps, and update the PbPb23 data-QA plots. Two other
+agents work on the pbpb26 NTuple process and the MC reco efficiencies; combined crossx + R_AA wait for all three.
+
+## Done = (all PbPb23-only; nothing combined)
+1. Event-selection cuts re-derived from parts 1-6: `event_level(23)` → `cuts(23)` → `cuts_alt(23)`
+   (`event_sel_cuts_pbpb_2023{,_alt}.root`, cut-2 keys present); old files backed up.
+2. Condor NTuples (6 parts) `_mindR_0_02_res_cut_v2` (trig-eff, `run_pbpb_23.sub`) + `_mindR_0_02` (crossx,
+   `run_pbpb_23_nominal.sub`); validated (ExitCode 0, clean .err, fresh non-empty parts, run/LB exclusion check) + hadd;
+   463315/462759 OS counts up; old combined files in `pbpb_2023/pre_rerun_20261013/`.
+3. Trig-eff 23 (pipeline_pbpb_trig_eff stages 5-8 for 23 only): Tight RDF fill, Fermi+log fit, TF1/TH2D validation,
+   `trig_effcy_plot_PbPb(23)`; Medium WP RDF fill + fit (run_data_trigeff_medium_wp.sh commands for 23).
+4. Crossx RDF fill 23 (run_crossx_hist_filling_pbpb23.sh commands + freshness/filled-histogram probe) and the OS−SS
+   twin (`run_crossx_hist_filling_pbpb_ss_subtr.sh 23`).
+5. PbPb23 data-QA: per-run N/L and factored N_HLT/L, N_evsel/N_HLT, N_sig/N_evsel (`qa_pbpb.sh` recipe, 6 parts).
+Concurrency: every ACLiC compile in a private build dir (other sessions compile the same classes); no combined-year
+stage (Stage 0 FCal all-year comparison, crossx Stages 6-8, R_AA) is run. Not in scope (user decision 2026-10-13 for the
+rerun: nominal + res_cut_v2 only): `_no_res_cut`, single-muon trees/ScrambGen, template fits.
+
 ## Latest Stage
+2026-10-13 R5: PbPb23 rerun with part6 started (plan above); step 1 evsel.
 2026-10-13 R4: DONE through step 5 — part6 (2 518 323 lost events) built, verified, installed, wired (preflight OK).
 Open: user go-ahead for the PbPb23 NTuple/downstream rerun; audit of the other 16 May/Sep-2026 tasks for merge orphans.
 2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
