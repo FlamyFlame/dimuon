@@ -1,0 +1,4 @@
+interface:
+  display_name: "Track Long Task"
+  short_description: "Externalize plans, progress, and recovery state"
+  default_prompt: "Use $track-long-task to create or resume a durable task record."

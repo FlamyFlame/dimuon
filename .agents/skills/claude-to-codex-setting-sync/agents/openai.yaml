@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude to Codex Sync"
+  short_description: "Detect and translate agent-setting drift"
+  default_prompt: "Use $claude-to-codex-setting-sync to audit Claude-to-Codex setting drift."

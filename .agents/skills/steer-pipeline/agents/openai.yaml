@@ -1,0 +1,4 @@
+interface:
+  display_name: "Steer Pipeline"
+  short_description: "Run and monitor dimuon analysis pipelines"
+  default_prompt: "Use $steer-pipeline to execute this analysis pipeline with checkpoints."

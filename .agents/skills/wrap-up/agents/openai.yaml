@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wrap Up"
+  short_description: "Close tasks with docs and verification"
+  default_prompt: "Use $wrap-up to verify and close this completed task."

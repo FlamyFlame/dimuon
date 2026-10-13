@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Plot"
+  short_description: "Review physics plots and fit outputs"
+  default_prompt: "Use $review-plot to review this dimuon analysis figure."

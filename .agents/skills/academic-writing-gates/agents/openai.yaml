@@ -1,0 +1,4 @@
+interface:
+  display_name: "Academic Writing Gates"
+  short_description: "Apply publication-grade note and paper gates"
+  default_prompt: "Use $academic-writing-gates to prepare or review this physics text."

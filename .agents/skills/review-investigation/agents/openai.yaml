@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Investigation"
+  short_description: "Run evidence-led discrepancy investigations"
+  default_prompt: "Use $review-investigation to investigate this unexpected analysis result."
