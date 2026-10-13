@@ -15,29 +15,30 @@ remains.
   - PbPb 2024: 2 parts, 92.6M entries total
   - PbPb 2025: 7 parts (part7 = Sep-2026 recovery, 971 913 entries), ~261.4M entries total
   - PbPb 2026: **skim COMPLETE (2026-09-16)** — 7 parts, 270 087 106 entries, all 35 GRL runs at
-    100 % of their files, 0 duplicate events. Luminosity 2.62316 nb⁻¹ was the full-GRL total; **superseded 2026-10-12 by 2.40869 nb⁻¹** (updated-GRL lumitable, 33 runs, bad runs/LBs excluded).
-  - pp 2024: 13 parts (12 chunked from 2 grid tasks + part13 = Sep-2026 recovery of run 488534, 652 340 entries; its NTuple rerun is pending)
+    100 % of their files, 0 duplicate events. Luminosity 2.62316 nb⁻¹ was the full-GRL total; superseded 2026-10-12 by the updated-GRL lumitable (33 runs, D7 bad runs/LBs excluded, 2.40869 nb⁻¹); **R_AA luminosity 2.35549 nb⁻¹** since 2026-10-13 (D8, TEMPORARY: runs 522200, 522041 also dropped → 31 analysed runs).
+  - pp 2024: 13 parts (12 chunked from 2 grid tasks + part13 = Sep-2026 recovery of run 488534, 652 340 entries; never NTuple-processed before — included in the 2026-10-13 NTuple rerun)
 
 ## PbPb 2026 — status (added 2026-09-10)
 
 A **fourth** Run-3 Pb+Pb period. It brings the combined Pb+Pb R_AA luminosity from
-4.62621 to **7.0349 nb⁻¹** (2026-10-12; was 7.24937 with the full-GRL 2026 value) (≈ 3.6× the Run-2 dimuon analysis, ≈ 1.52× the current
+4.62621 to **6.98170 nb⁻¹** (2026-10-13, D8; was 7.0349 with the updated GRL before D8, 7.24937 with the full-GRL 2026 value) (≈ 3.6× the Run-2 dimuon analysis, ≈ 1.52× the current
 23+24+25 combination).
 
 | Item | Status |
 |------|--------|
-| Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.40869 nb⁻¹ since 2026-10-12) | **DONE** — regenerated from the updated GRL; run list == `physics_HI2026_50ns_noIBL_updated.xml` (33 runs) |
+| Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.40869 nb⁻¹ since 2026-10-12) | **DONE** — regenerated from the updated GRL; run list == `physics_HI2026_50ns_noIBL_updated.xml` (33 runs). R_AA lumi = 2.35549 nb⁻¹ (D8 runs subtracted in code, 2026-10-13) |
 | Lumi + metadata docs (`luminosity/README.md`, `analysis_metadata.md`) | **DONE** |
 | Grid skim (`hi2026`), download, hadd | **DONE 2026-09-16** — 7 parts, 270 087 106 entries, all 35 runs 100 % (`pbpb2026_skim_and_lgd_storage.md`, CLOSED). AthAnalysis 25.2.90. |
 | Analysis-code support (all stages) | **DONE, reviewed PASS 2026-09-16** — `pbpb2026_analysis_support.md` |
-| Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | **pending step 14** (`run_pbpb_all.sh YEARS="23 25 26"`, launched 2026-09-16) |
-| NTuple processing / hadd | **pending step 14** |
-| Trigger efficiency (P2+P3, 2026's own ε) | **pending step 14** (tag-and-probe on the HardProbes skim; no MB sample needed in the live pipeline) |
-| RDF crossx hist filling | **pending step 14** |
-| Combined 23+24+25+26 crossx / R_AA plots | **pending step 14** (crossx); R_AA after the pp24 part13 rerun |
+| Event-selection cuts file `event_sel_cuts_pbpb_2026.root` | produced 2026-09-17 (step 14); **re-derivation with D7 + D8 + the per-year cut-2 window in progress 2026-10-13** (2025 likewise) |
+| NTuple processing / hadd | produced 2026-09-17 (step 14) — **STALE** (predates D7/D8 and the cut-2 window); **rerun in progress 2026-10-13** for pp24/PbPb25/PbPb26 (`ntuple_rerun_pp24_pbpb2526_20261013.md`) |
+| Trigger efficiency (P2+P3, 2026's own ε) | produced 2026-09-17 on the stale NTuples; **rerun with the new inputs pending** (tag-and-probe on the HardProbes skim; no MB sample needed in the live pipeline) |
+| RDF crossx hist filling | produced 2026-09-17 on the stale NTuples; **rerun pending** (another session) |
+| Combined 23+24+25+26 crossx / R_AA plots | crossx produced 2026-09-17 on the stale inputs; **crossx / R_AA with the new NTuples + lumi pending** |
 
-**Everything already produced for 2023/2024/2025 is unaffected** by the 2026 work: no
-cut, weight, binning or convention changed. Reconstruction efficiency needs no 2026
+**Everything already produced for 2023/2024 is unaffected** by the 2026 work: no
+cut, weight, binning or convention changed. (PbPb 2025 and pp24 NTuples are being rerun 2026-10-13 for
+the 2025 cut-2 window and the new pp24 GRL / run-488456 LB 84–220 exclusion — not 2026-related.) Reconstruction efficiency needs no 2026
 entry (the Run-2 placeholder is keyed by centrality × q·η, not by year); ⟨T_AA⟩ reuses
 the 2023 Glauber placeholder exactly as 2024 and 2025 do.
 

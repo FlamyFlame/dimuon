@@ -110,10 +110,16 @@ Supported modes:
 | `hi2023`                   | 2023  | data23_hi Pb+Pb                       | data      | v120-pro33-03                        | yes      | yes         |
 | `hi2024`                   | 2024  | data24_hi Pb+Pb                       | data      | HI2024_50ns                          | yes      | yes         |
 | `hi2025`                   | 2025  | data25_hi Pb+Pb                       | data      | HI2025_50ns                          | yes      | yes         |
-| `hi2026`                   | 2026  | data26_hi Pb+Pb                       | data      | HI2026_50ns_noIBL                    | yes      | yes         |
-| `pp2024`                   | 2024  | data24_5p36TeV pp reference           | data      | 2024ppRef_25ns                       | yes      | no          |
+| `hi2026`                   | 2026  | data26_hi Pb+Pb                       | data      | HI2026_50ns_noIBL_updated‡           | yes      | yes         |
+| `pp2024`                   | 2024  | data24_5p36TeV pp reference           | data      | ppref2024_all_good‡ (v144-pro42-02)  | yes      | no          |
 | `ppmcfullsim2024`          | –     | Pythia8 pp fullsim MC                 | geant4    | (none)                               | **yes**† | no          |
 | `ppmcfullsim_hioverlay24`* | 2024  | Pythia8 pp fullsim + HIJING overlay   | geant4    | (none)                               | **yes**† | **off** — overlay AOD has no ZDC |
+
+‡GRL now configured in `TrigRates_CA.py` (2026-10-12). The existing skims were made with the
+previous GRLs: `physics_HI2026_50ns_noIBL.xml` (35 runs) and `physics_2024ppRef_25ns.xml`
+(now renamed `physics_2024ppRef_25ns_legend_old_lumi_calib.xml`; pp24 part13 too). Analysis-level
+exclusions on top of the GRLs are applied in the NTuple stage, not the skim (pp24 run 488456
+LB 84–220; Pb+Pb 2026 D8 runs 522200, 522041 → 31 analysed runs).
 
 *Lives in `run_pythia_fullsim_HIJING_overlay/TrigRates_CA.py`, not in
 `scripts/TrigRates_CA.py`. Uses a specialized config that adds the overlay run
@@ -604,7 +610,7 @@ carries two f-tags**, so no "keep the latest f-tag" resolution was needed and no
 be double-counted. 41 f-tag datasets in total; f1714 (13 runs), f1717 (2), f1720 (13),
 f1723 (12), f1727 (1).
 
-**GRL:** `xmls/physics_HI2026_50ns_noIBL.xml` — 35 runs, periods J+K, defect tag
+**GRL (skim record):** `xmls/physics_HI2026_50ns_noIBL.xml` — 35 runs, periods J+K, defect tag
 `DetStatus-v144-pro58-01`, ignoring `PIXEL_PERFORMANCE_INTOLERABLE`,
 `TRIG_HLT_IDT_BSPOT_INVALID_STATUS`, `ID_IBL_TRACKCOVERAGE_SEVERE`, `PIXEL_IBL_DISABLED`.
 All 35 GRL runs have an AOD dataset. **Six AOD runs are not in the GRL and are excluded
@@ -615,6 +621,12 @@ events, the 2026 analogue of 2025's excluded run 511013). Excluding them costs 9
 `alg.UseGRL = True` means the skim drops every event of those runs anyway. They are parked
 in `run_26hi/InDstxt_PbPb2026_5p36TeV_nonGRL.txt` so a reissued GRL can be served by
 re-running just those.
+
+**Updated GRL (2026-10-12):** `xmls/physics_HI2026_50ns_noIBL_updated.xml` (33 runs: minus 522384,
+522408, 522336 LB 344–521, 522355 LB ≥ 448) is now the configured `hi2026` GRL and the analysis/lumi
+GRL; the existing skim (old GRL) is a superset and the NTuple stage drops the removed runs/LBs
+(plus the D8 runs 522200, 522041, TEMPORARY, not a GRL change). `run_26hi/grid_sub.sh` was
+regenerated with it on 2026-10-13 (not submitted); `grid_sub_part*.sh` remain the submission record.
 
 ### Partition plan (`--nGBPerJob MAX`, ≤ ~500 jobs/task)
 

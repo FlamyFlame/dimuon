@@ -1,5 +1,8 @@
 # Pb+Pb 2026 runs 522384 and 522408 (+ LB blocks of 522336, 522355): reduced N_trk^HItight at fixed FCal ΣE_T — evidence record
 
+> **D8 2026-10-13 (user, TEMPORARY):** runs **522200** and **522041** (shifted ZDC timing, not the N_trk band of this record)
+> are ALSO discarded before any step; L(2026) = 2.35549 nb⁻¹ (`pbpb2026_analysis_support.md` D8).
+>
 > **DECISION 2026-10-12 (user, final — LB boundaries from the ATLAS twiki):** for Pb+Pb 2026 the
 > analysis DISCARDS runs **522384** and **522408** entirely, run **522336 LB 344–521** and run
 > **522355 LB ≥ 448**, BEFORE any analysis step (incl. event selection) — `PbPbBadRuns` /

@@ -31,7 +31,7 @@ All variables are optional. Defaults are shown.
 
 | Variable | Default | Pipelines | Description |
 |----------|---------|-----------|-------------|
-| `YEARS` | `"23 24 25"` | Both | Space-separated 2-digit years to process |
+| `YEARS` | `"23 24 25 26"` | Both | Space-separated 2-digit years to process |
 | `POLL_SECONDS` | `45` | Both | Condor polling interval (seconds) |
 | `CONDOR_TIMEOUT_SECONDS` | `0` | Both | Max seconds to wait for condor (0 = no limit) |
 | `SKIP_CONDOR` | `0` | Both | Set to `1` to skip event selection and condor submit+wait; reuses existing cuts and NTuple outputs but still validates and hadds |
@@ -337,17 +337,17 @@ the number of input file batches for that year's dataset.
 
 | Year | Queue count | Condor jobs per pipeline |
 |------|-------------|------------------------|
-| 2023 | 4 | 4 per pipeline (8 total across both) |
+| 2023 | 5 | 5 per pipeline (10 total across both) |
 | 2024 | 2 | 2 per pipeline (4 total across both) |
-| 2025 | 6 | 6 per pipeline (12 total across both) |
-| 2026 | 5 *(placeholder)* | 5 per pipeline (10 total across both) |
+| 2025 | 7 | 7 per pipeline (14 total across both) |
+| 2026 | 7 | 7 per pipeline (14 total across both) |
 
-Total per pipeline run: 17 condor jobs (4 + 2 + 6 + 5).
+Total per pipeline run: 21 condor jobs (5 + 2 + 7 + 7). (2023 part5 and 2025 part7 are the
+Sep-2026 recovery parts; 2026 = 7 merged parts of the completed skim.)
 
-The 2026 count is a **placeholder**: the 2026 skim is submitted as 5 grid tasks
-(`SkimCode/run_26hi/InDstxt_PbPb2026_5p36TeV_part1..5.txt`), but `grid_monitor`'s
-chunked-hadd fallback can split a task into extra part files, so the real count can be
-larger. `grid_monitor` auto-updates `PbPbExtras.c` `{26, N}` and `run_pbpb_26.sub` from
+The 2026 skim was submitted as 5 grid tasks plus recovery parts
+(`SkimCode/run_26hi/grid_sub_part*.sh`); `grid_monitor`'s chunked-hadd fallback can split a
+task into extra part files, so the count follows what lands on disk. `grid_monitor` auto-updates `PbPbExtras.c` `{26, N}` and `run_pbpb_26.sub` from
 what actually lands on disk; the other five `run_pbpb_26_*.sub` variants must be synced
 by hand. See `tracking/pbpb2026_analysis_support.md`.
 

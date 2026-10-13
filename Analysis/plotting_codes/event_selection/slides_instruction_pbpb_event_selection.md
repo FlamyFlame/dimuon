@@ -19,7 +19,7 @@ These slides document the event-level quality cuts applied to raw PbPb collision
 | Cut | Variable | Method | Survival (top 80%) |
 |-----|----------|--------|-------------------|
 | 1 | ZDC total energy vs FCal ET | Upper boundary μ+5σ per FCal slice (TGraph) | 99.64% |
-| 2 | ZDC time, both sides | Hard box: \|t_A\| < 1.8 ns AND \|t_C\| < 1.8 ns | 99.99% |
+| 2 | ZDC time, both sides | Per-year window `PbPbZdcTimeCut` (23/24: \|t_A\|, \|t_C\| < 1.5 ns; 25: −0.6 < t_A < 1.5; 26: −1.5 < t_A < 0.8; t_C ±1.5) | 99.99% |
 | 3 | ZDC pre-sample amplitude (A and C) | EMG fit, upper cut at μ+6σ per side | 94.76% |
 | 4 | nTrk HItight fraction vs total nTrk | Lower bound μ−5σ per nTrk slice (TGraph) | 99.96% |
 | 5 | nTrk HItight vs FCal ET | Band μ±5σ per FCal slice (TGraph pair) | 99.92% |
@@ -53,7 +53,7 @@ All plots are for Pb+Pb 2024 data (suffix `_pbpb_2024.png`).
 - Opening sentence: "Five sequential quality cuts are applied to events passing the HLT_mu4_L1MU3V single-muon trigger. Each cut requires all prior cuts to pass."
 - Present the 5 cuts as a numbered vertical flow (arrow connecting each step), with a one-line description per cut:
   1. **ZDC–FCal banana** — remove events with anomalously high ZDC energy for their FCal ET (non-hadronic background)
-  2. **ZDC time box** — require both ZDC sides to fire within ±1.8 ns of collision time (remove out-of-time pile-up)
+  2. **ZDC time box** — require both ZDC sides to fire inside the per-year ZDC time window (±1.5 ns for 2023/24; A-side edge −0.6 ns in 2025, +0.8 ns in 2026) (remove out-of-time pile-up)
   3. **ZDC pre-sample amplitude** — remove events with saturated/noisy ZDC pre-amplifiers (both sides < threshold)
   4. **nTrk HItight fraction** — require the fraction of tight-quality tracks to be consistent with genuine collisions
   5. **nTrk HItight vs FCal ET band** — require track multiplicity to be consistent with the measured FCal energy
@@ -107,7 +107,7 @@ All plots are for Pb+Pb 2024 data (suffix `_pbpb_2024.png`).
 
 **Figure:** `event_sel_cut2_ZDC_time_standalone_pbpb_2024.png`
 
-**Caption:** "ZDC time on side A vs side C for events passing cut 1. The red dashed lines mark the ±1.8 ns acceptance box. Genuine collision events produce simultaneous ZDC signals on both sides and cluster tightly at the origin. Events outside the box are out-of-time backgrounds (beam–gas interactions, satellite bunches). Survival rate for top 80% centrality: **99.99%** — nearly all central events have good ZDC timing."
+**Caption:** "ZDC time on side A vs side C for events passing cut 1. The red dashed lines mark the ZDC time window of the year. Genuine collision events produce simultaneous ZDC signals on both sides and cluster tightly at the origin. Events outside the box are out-of-time backgrounds (beam–gas interactions, satellite bunches). Survival rate for top 80% centrality: **99.99%** — nearly all central events have good ZDC timing."
 
 ---
 
@@ -117,7 +117,7 @@ All plots are for Pb+Pb 2024 data (suffix `_pbpb_2024.png`).
 
 **Figure:** `event_sel_cut2_ZDC_time_fail_5panel_pbpb_2024.png`
 
-**Caption:** "Five-panel distributions for events rejected by the ZDC time cut. The ZDC time panel shows the rejected events lie outside the ±1.8 ns box. Other variables (FCal, nTrk) can still look collision-like, motivating this explicit timing requirement."
+**Caption:** "Five-panel distributions for events rejected by the ZDC time cut. The ZDC time panel shows the rejected events lie outside the ZDC time window. Other variables (FCal, nTrk) can still look collision-like, motivating this explicit timing requirement."
 
 ---
 

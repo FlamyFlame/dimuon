@@ -67,9 +67,10 @@ Legend labels are generated dynamically from `DatasetTriggerMap` in `InputOutput
 | Run | 0–5% formula | Source |
 |---|---|---|
 | Run 2 (2015+2018) | `1/(0.05 × 7670 × 26.2339 × 1.8172/1000)` | `PbPbBaseClass.h` |
-| 2023 | `1/(0.05 × 7800 × 26.1428 × 1.3896/1000)` | `PbPbBaseClass.h` |
-| 2024 | `1/(0.05 × 7800 × 26.1428 × 1.5411/1000)` | `PbPbBaseClass.h` |
-| 2025 | same as 2023 (TODO: update with actual values) | `PbPbBaseClass.h` |
+| 2023 | `1/(0.05 × 7800 × 26.1428 × 1.17576/1000)` | `PbPbBaseClass.h` |
+| 2024 | `1/(0.05 × 7800 × 26.1428 × 0.85112/1000)` (2023 T_AA placeholder) | `PbPbBaseClass.h` |
+| 2025 | `1/(0.05 × 7800 × 26.1428 × 2.59933/1000)` (2023 T_AA placeholder) | `PbPbBaseClass.h` |
+| 2026 | `1/(0.05 × 7800 × 26.1428 × 2.35549/1000)` (2023 T_AA placeholder; L after D8, 2026-10-13) | `PbPbBaseClass.h` (`kLumiPbPb2026Nb`) |
 
 **Plot stage** (`RAA_plotting.cxx`): `Scale(1., "width")` applied to both pp and PbPb
 projections for modes 1 & 2.
@@ -84,7 +85,7 @@ projections for modes 1 & 2.
 
 ### Years / datasets plotted
 - pp: run_year argument (default 2024); trigger auto-determined from `DatasetTriggerMap`
-- PbPb: run_year argument (default 2024; supports 2023, 2024, 2025); trigger auto-determined from `DatasetTriggerMap`
+- PbPb: run_year argument (default 2024; supports 2023, 2024, 2025, 2026); trigger auto-determined from `DatasetTriggerMap`
 
 ### Normalization factors
 **Hist-filling stage:**

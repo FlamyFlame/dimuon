@@ -267,9 +267,9 @@ old `pair_eta < 2.2` form; not in the active chain.
 **A. Data crossx (always required):**
 1. `RDFBasedHistFilling/run_crossx_hist_filling_pp24.sh`
    → `dimuon_data/pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root`
-2. `run_crossx_hist_filling_pbpb23.sh`, `…pbpb24.sh`, `…pbpb25.sh`
+2. `run_crossx_hist_filling_pbpb23.sh`, `…pbpb24.sh`, `…pbpb25.sh`, `…pbpb26.sh`
    → `dimuon_data/pbpb_20YY/histograms_real_pairs_pbpb_20YY_single_mu4_no_trg_plots_nominal.root`
-   (all three years — crossx & R_AA are always year-combined)
+   (all four years — crossx & R_AA are always year-combined)
 
 These regenerate the OS and SS signal-region histograms
 (`h2d_crossx_…_w_signal_cuts` + `h2d_ss_…` for pp; `h3d_op/ss_…_vs_centr…` for
@@ -374,10 +374,10 @@ acceptance) goes stale → re-run `/sync-note-figures` then `/check-note-sync`
 [ ] /review-analysis-code on the edits (quote analysis_overview §2 signal region)
 [ ] Recompile (ACLiC) PP, PbPb, PythiaTruth, fullsim/overlay classes
 [ ] *** IS THIS AN NTUPLE-STAGE CUT? *** (muon pT is; pair pT / gap window / minv are not)
-[ ]   if yes: rerun NTuple processing FIRST -- data pp24 (both modes) + pbpb 23/24/25,
+[ ]   if yes: rerun NTuple processing FIRST -- data pp24 (both modes) + pbpb 23/24/25/26,
 [ ]   Pythia truth, Pythia fullsim pp, HIJING overlay, POWHEG truth AND POWHEG fullsim.
 [ ]   Nothing below is valid until it completes; see the §3.C boundary warning.
-[ ] Rerun data crossx: pp24 + pbpb23/24/25            (§3.A)
+[ ] Rerun data crossx: pp24 + pbpb23/24/25/26         (§3.A)
 [ ] Rerun pythia truth acceptance (3 modes)           (§3.B)
 [ ] Rerun pp Pythia fullsim reco-eff + det-response    (§3.C/§4) -- RESULT-AFFECTING for pp
 [ ] Rebuild pair_reco_eff_pp24_full.root by hand       (§3.C/§4) -- in no pipeline

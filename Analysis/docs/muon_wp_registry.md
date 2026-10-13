@@ -167,7 +167,7 @@ below should migrate to.
 
 ## Blast radius of a Medium↔Tight switch (see also `signal_selection_change_impact.md`)
 That doc's "ntuple UNCHANGED" assumption is FALSE for the WP (WP is upstream for DATA). Net
-result-affecting chain: DATA WP selection (§2/§3) → data crossx (pp + PbPb 23/24/25) → crossx / R_AA /
+result-affecting chain: DATA WP selection (§2/§3) → data crossx (pp + PbPb 23/24/25/26) → crossx / R_AA /
 MC–data / stage plots; **reco-eff placeholder must be rebuilt from the Tight file (§4)** and
 **trig-eff must be Tight (§5)** — both move the number (unlike a ΔR change where the placeholder
 cancels). Truth acceptance is WP-independent (unchanged). Skim unchanged. MC RDF already has both.

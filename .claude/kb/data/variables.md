@@ -39,10 +39,11 @@ All derived cuts saved to `event_sel_cuts_pbpb_20YY.root`:
 | `g_ntrk_frac_cut_lo` | TGraph | nTrk fraction lower bound |
 | `g_ntrk_fcal_cut_lo` | TGraph | nTrk vs FCal lower band |
 | `g_ntrk_fcal_cut_hi` | TGraph | nTrk vs FCal upper band |
-| `ZDC_time_cut_ns` | TParameter | Time cut threshold |
+| `ZDC_time_{A,C}_{lo,hi}_ns` | TParameter | Cut-2 per-side time window (read via `PbPbReadZdcTimeWindow`, throws on a stale file) |
+| `ZDC_time_cut_ns` | TParameter | Legacy symmetric ±cut (2023/2024 files only; accepted only if it equals the `PbPbZdcTimeCut` window) |
 | `ZDC_preamp_A_cut_ADC` | TParameter | Preamp A scalar cut |
 | `ZDC_preamp_C_cut_ADC` | TParameter | Preamp C scalar cut |
-| `t_preamp_per_run` | TTree | Per-run preamp cuts (PbPb25 only) |
+| `t_preamp_per_run` | TTree | Per-run preamp cuts (PbPb25, PbPb26) |
 
 ## Skim output branches
 

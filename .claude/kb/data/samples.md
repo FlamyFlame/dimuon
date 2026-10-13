@@ -6,7 +6,7 @@ Base directory: `/usatlas/u/yuhanguo/usatlasdata/`
 
 | Category | Directory | Contents |
 |----------|-----------|----------|
-| Data (all periods) | `dimuon_data/` | Subdirs: pp_run2, pp_2024, pbpb_run2, pbpb_2023, pbpb_2024, pbpb_2025 |
+| Data (all periods) | `dimuon_data/` | Subdirs: pp_run2, pp_2024, pbpb_run2, pbpb_2023, pbpb_2024, pbpb_2025, pbpb_2026 |
 | Data plots | `dimuon_data/plots/` | Data and data-MC comparison plots |
 | Pythia | `pythia/` | Sample files, muon-pair trees, hist root files |
 | Pythia plots | `pythia/plots/` | Pythia plots |
@@ -28,6 +28,7 @@ Current assignments:
 - `{23,"PbPb"}` -> `"single_mu4"` (trigger_mode=1)
 - `{24,"PbPb"}` -> `"single_mu4"` (trigger_mode=1)
 - `{25,"PbPb"}` -> `"single_mu4"` (trigger_mode=1)
+- `{26,"PbPb"}` -> `"single_mu4"` (trigger_mode=1)
 - `{24,"pp"}` -> `"2mu4"` (trigger_mode=3)
 
 If the map entry doesn't match the actual output filename, the plotter fails to find the file and skips the year silently.
@@ -41,6 +42,7 @@ See `SkimCode/README.md` for full details. Key modes:
 | `hi2023` | 2023 | data23_hi Pb+Pb | yes |
 | `hi2024` | 2024 | data24_hi Pb+Pb | yes |
 | `hi2025` | 2025 | data25_hi Pb+Pb | yes |
+| `hi2026` | 2026 | data26_hi Pb+Pb | yes |
 | `pp2024` | 2024 | data24_5p36TeV pp | no |
 | `ppmcfullsim2024` | -- | Pythia8 pp fullsim | no |
 | `ppmcfullsim_hioverlay24` | 2024 | overlay (no ZDC in AOD) | no |

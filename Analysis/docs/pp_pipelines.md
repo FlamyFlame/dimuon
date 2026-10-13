@@ -11,7 +11,9 @@ pipeline structure:
 | `pipeline_pp_trig_eff.sh` | Single-muon trigger efficiency (trigger_mode=1, single_mu4, erf+log fitting) |
 
 Unlike PbPb, PP has **no event selection** (no ZDC, no FCal centrality, no
-nTrk_HITight, no preamp cuts) and **no centrality binning**.
+nTrk_HITight, no preamp cuts) and **no centrality binning**. The only pp event-level
+exclusion is the data-quality LB drop of run 488456 LB 84–220 (`PPBadLBRanges(24)`,
+`PPEventSelConfig.h`, applied in `PPExtras.c`).
 
 PP crossx uses `trigger_mode=3` (2mu4 trigger), fundamentally different from
 PbPb's `trigger_mode=1` + `mu4_nominal_pbpb_NO_trig_calc=true`. This means
@@ -45,7 +47,7 @@ pp24 2mu4 → 1/395.836 pb⁻¹ (2026-10-12: new GRL v144-pro42-02; was 1/400.41
 
 | Stage | Description |
 |-------|-------------|
-| 1 | Submit NTuple nominal condor jobs (`run_pp_24_nominal.sub`, queue 12) |
+| 1 | Submit NTuple nominal condor jobs (`run_pp_24_nominal.sub`, queue 13) |
 | 2 | Wait for condor cluster |
 | 3 | Validate per-batch ROOT outputs (12 muon_pairs + 12 hists) |
 | 4 | hadd into combined files; validate TTree entry counts |
@@ -95,7 +97,7 @@ on triggered samples, same as PbPb. The code exists as reference only.
 
 | Stage | Description |
 |-------|-------------|
-| 1 | Submit NTuple trig eff condor jobs (`run_pp_24.sub`, queue 12) |
+| 1 | Submit NTuple trig eff condor jobs (`run_pp_24.sub`, queue 13) |
 | 2 | Wait for condor cluster |
 | 3 | Validate per-batch ROOT outputs |
 | 4 | hadd into combined files |
@@ -132,17 +134,18 @@ on triggered samples, same as PbPb. The code exists as reference only.
 
 | Aspect | PP | PbPb |
 |--------|-----|------|
-| Event selection | None | 5-cut sequential (ZDC, FCal, preamp, nTrk) |
+| Event selection | None (only run 488456 LB 84–220 dropped) | 5-cut sequential (ZDC, FCal, preamp, nTrk) |
 | Centrality | None | Centrality-dependent efficiency |
 | Crossx trigger | trigger_mode=3 (2mu4) | trigger_mode=1 + NO_trig_calc |
 | NTuple split | Separate scripts for crossx vs trig eff | Same trigger, different flags |
 | pT fitting | erf+log | fermi+log |
 | Years | 24 only | 23, 24, 25, 26 |
-| Queue count | 12 (all from one year) | 4+2+6+5 = 17 (across 4 years) |
+| Queue count | 13 (all from one year) | 5+2+7+7 = 21 (across 4 years) |
 | Pipeline 3 | Not included | Commented out (biased on triggered sample) |
 
 
 ## Queue Count
 
-12 condor jobs per pipeline (matching 12 pp24 data files from the May 2026
-skim). Queue count is set in both pipeline scripts and `.sub` files.
+13 condor jobs per pipeline (12 pp24 parts from the May 2026 skim + part13, the Sep-2026
+recovery of run 488534, first NTuple-processed in the 2026-10-13 rerun). Queue count is set in
+both pipeline scripts (`QUEUE_COUNT`), the `.sub` files and `PPExtras.c` (`file_batch_max`).

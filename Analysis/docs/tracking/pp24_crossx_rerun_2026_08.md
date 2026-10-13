@@ -77,7 +77,7 @@ For opposite-sign pairs in the single-b signal region, per (pair p_T, pair eta) 
 dsigma/dX = (1/L_int) * SUM_pairs  1 / [ eps_trig^pair * eps_reco^pair ]
 ```
 
-with `L_int` = 400.412 pb^-1 (pp24, 2mu4) and
+with `L_int` = 395.836 pb^-1 (pp24, 2mu4; GRL v144-pro42-02 since 2026-10-12, was 400.412) and
 
 ```
 eps_trig^pair = eps^nc(p_T1, q*eta1) * eps^nc(p_T2, q*eta2) * eps_dR^2mu4(dR ; pair p_T, pair eta)

@@ -73,7 +73,7 @@ confirmed.**
 > values now documented in **`IntNotes/analysis_metadata.md`** (private CERN
 > GitLab IntNote repo), backed by `IntNotes/data/luminosity/` (per-run lumi
 > CSVs) and `IntNotes/data/centrality/TaaValues2023.txt`. Summary:
-> - **Q2.1 lumi** (`Prescale Corrected`, analysis triggers): pp24 2mu4 = 400.412 pb⁻¹;
+> - **Q2.1 lumi** (`Prescale Corrected`, analysis triggers): pp24 2mu4 = 400.412 pb⁻¹ (**now 395.836**, GRL v144-pro42-02, 2026-10-12; PbPb26 = 2.35549 nb⁻¹ after D8, 2026-10-13 — current values in `IntNotes/analysis_metadata.md`);
 >   PbPb23 mu4 = 1.17576 nb⁻¹ (corrected 2026-06-19: correct-GRL v120 total
 >   1183.650457 µb⁻¹ = 1.18365 nb⁻¹ − the TWO b-hadron runs 461674 (2.623332) +
 >   462964 (5.262407) µb⁻¹, both excluded at event level via PbPbBadRuns; old

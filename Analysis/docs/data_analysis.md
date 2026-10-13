@@ -26,7 +26,7 @@ Processes real collision data from ATLAS Run 2 (pp17, PbPb15, PbPb18) and Run 3 
 
 | Dataset | Trigger | `trigger_mode` | Suffix |
 |---------|---------|----------------|--------|
-| PbPb23/24/25 | single mu4 | 1 | `_single_mu4` |
+| PbPb23/24/25/26 | single mu4 | 1 | `_single_mu4` |
 | pp24 | 2mu4 | 3 | `_2mu4` |
 
 See `DatasetTriggerMap.h` for the full mapping.
@@ -81,8 +81,11 @@ it**. Both are documented slide-by-slide, with the physics of the two bands, in
   cuts file is missing) in `NTupleProcessingCode/PbPbExtras.c`
 - Derivation + per-cut figures: `plotting_codes/event_selection/plot_pbpb_event_sel_event_level.cxx`
   (event-level distributions, cut 1) then `plot_pbpb_event_sel_cuts.cxx` (cuts 2–5)
-- Run-quality exclusions: `PbPbBadRuns()` in `PbPbEventSelConfig.h` (2023: 461674, 462964;
-  no other year) — any change must move the luminosity in `Utilities/PbPbSampledLumi.h` and
+- Run-quality exclusions (applied before every step, incl. the cut derivation): `PbPbBadRuns()` in
+  `PbPbEventSelConfig.h` — 2023: 461674, 462964 (ZDC problems); 2026: 522384, 522408 (D7, 2026-10-12)
+  + 522200, 522041 (D8, 2026-10-13, TEMPORARY pending collaborators); `PbPbBadLBRanges()` — 2026:
+  522336 LB 344–521, 522355 LB ≥ 448. pp24: `PPBadLBRanges()` in `PPEventSelConfig.h` — run 488456
+  LB 84–220 (applied in `PPExtras.c`). Any change must move the luminosity in `Utilities/PbPbSampledLumi.h` and
   `PbPbBaseClass.h::make_crossx_factors_pbpb_<yr>()` in the same commit.
 
 <!-- TODO: Document pipeline steps, validation, plotting -->

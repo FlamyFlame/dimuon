@@ -37,10 +37,15 @@ See `Analysis/README.md` for full details.
 
 5 sequential cuts (each requires prior cuts to pass):
 1. ZDC vs FCal banana cut (mu+5sigma per FCal slice, TGraph interpolation)
-2. ZDC time box: |t_A| < cut_ns AND |t_C| < cut_ns
-3. ZDC preamp sum: preamp_A < cut_A AND preamp_C < cut_C
+2. ZDC time window, per year/side from `PbPbZdcTimeCut()` (`PbPbEventSelConfig.h`): a_lo < t_A < a_hi AND c_lo < t_C < c_hi;
+   2023/24 |t_A|,|t_C| < 1.5 ns; 2025 −0.6 < t_A < 1.5 ns; 2026 −1.5 < t_A < 0.8 ns; |t_C| < 1.5 ns always
+   (2025/2026 A-side window provisional-but-adopted, user 2026-10-12)
+3. ZDC preamp sum: fails only if BOTH preamp_A ≥ cut_A AND preamp_C ≥ cut_C
    - PbPb23/24: hard-coded per-year symmetric scalars (300/300, 420/420 ADC)
-   - PbPb25: per-run mu+7sigma Gaussian fit (42 runs, stored as TTree `t_preamp_per_run`)
+   - PbPb25, PbPb26: per-run mu+7sigma Gaussian fit (2025: 42 runs; stored as TTree `t_preamp_per_run`)
+
+Before any cut, bad runs/LBs are dropped (`PbPbBadRuns`/`PbPbBadLBRanges`): 2023 461674, 462964 (ZDC problems);
+2026 522384, 522408 (D7), 522200, 522041 (D8, TEMPORARY 2026-10-13), 522336 LB 344–521, 522355 LB ≥ 448.
 4. nTrk HItight fraction vs total nTrk: lower bound (per-slice Gauss, mu-5sigma)
 5. nTrk HItight vs FCal ET band (per-slice Gauss, mu+/-5sigma)
 

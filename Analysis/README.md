@@ -3,7 +3,7 @@
 Low-mass dimuon continuum measurement in pp and Pb+Pb collisions at the LHC (ATLAS).
 Covers muon-pair production in the mass range ~1-3 GeV from open heavy-flavour (b/c-quark) decays.
 
-**This is a Run 3 analysis.** Run 2 code paths (pp17, PbPb15/18) exist for cross-checks but are no longer maintained for new analysis decisions as of March 2026. All active development targets Run 3 datasets (pp24, PbPb23/24/25).
+**This is a Run 3 analysis.** Run 2 code paths (pp17, PbPb15/18) exist for cross-checks but are no longer maintained for new analysis decisions as of March 2026. All active development targets Run 3 datasets (pp24, PbPb23/24/25/26).
 
 ## Environment
 
