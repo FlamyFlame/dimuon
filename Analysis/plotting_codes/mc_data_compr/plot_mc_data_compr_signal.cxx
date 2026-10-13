@@ -39,6 +39,7 @@
 //         root -l -b -q 'plot_mc_data_compr_signal.cxx+("medium")'    (Medium WP systematic)
 // =================================================================================================
 
+#include "../../Utilities/PairEtaPanelBins.h"   // coarse crossx eta^pair cells + alignment guard
 #include "PlotMCDataComprBaseClass.c"
 #include <TLatex.h>
 
@@ -132,6 +133,35 @@ void PlotMCDataComprSignalKinematics::Run(){
                 AssertSameAxis1D(series[i_data].h, series[i].h,
                                  "signal " + kin + " (" + series[i_data].key + " vs "
                                  + series[i].key + ")");
+
+        // eta^pair on the COARSE crossx cells (CommonEffcyConfig::pair_eta_proj_ranges_coarse_incl_gap;
+        // user 2026-10-13): the data are corrected with the 3D bin-by-bin eps^{reco,SF}, which is valid per
+        // coarse cell only -- inside a cell the single-muon gap windows carve dips the coarse eps cannot
+        // follow (pair_reco_eff_bin_by_bin_reco_binned.md R2), so a fine-binned corrected eta^pair is not a
+        // measurement. Same cells as the crossx and R_AA eta^pair views. Summed BEFORE the width scaling.
+        if (kin == "pair_eta"){
+            static const CommonEffcyConfig cfg{};
+            const auto& panels = cfg.pair_eta_proj_ranges_coarse_incl_gap;
+            PairEtaPanels::CheckPanelsMatchFiducialCut();
+            std::vector<double> edges{panels.front().first};
+            for (const auto& pnl : panels) edges.push_back(pnl.second);
+            for (size_t i = 0; i < series.size(); ++i){
+                if (!series[i].h) continue;
+                TH1D* hc = new TH1D(Form("%s_coarse_eta", series[i].h->GetName()), series[i].h->GetTitle(),
+                                    (int)edges.size() - 1, edges.data());
+                hc->SetDirectory(nullptr);
+                hc->Sumw2();
+                for (size_t k = 0; k < panels.size(); ++k){
+                    const auto b = PairEtaPanels::Bins(series[i].h->GetXaxis(), panels[k],
+                                                       "plot_mc_data_compr_signal (coarse eta^pair)");
+                    double err = 0.;
+                    hc->SetBinContent((int)k + 1, series[i].h->IntegralAndError(b.first, b.second, err));
+                    hc->SetBinError((int)k + 1, err);
+                }
+                series[i].h = hc;
+                owned.push_back(hc);
+            }
+        }
 
         // --- normalize & style ------------------------------------------------------------------
         for (size_t i = 0; i < series.size(); ++i){
