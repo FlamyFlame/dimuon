@@ -1,5 +1,13 @@
 # Pb+Pb 2026 runs 522384 and 522408 (+ LB blocks of 522336, 522355): reduced N_trk^HItight at fixed FCal ΣE_T — evidence record
 
+> **DECISION 2026-10-12 (user, final — LB boundaries from the ATLAS twiki):** for Pb+Pb 2026 the
+> analysis DISCARDS runs **522384** and **522408** entirely, run **522336 LB 344–521** and run
+> **522355 LB ≥ 448**, BEFORE any analysis step (incl. event selection) — `PbPbBadRuns` /
+> `PbPbBadLBRanges` in `Analysis/NTupleProcessingCode/PbPbEventSelConfig.h`; updated GRL
+> `SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml`; luminosity to be regenerated from that GRL.
+> The twiki boundaries differ slightly from this record's own scan (522336 LB 344–520; 522355 drift
+> from LB 445, second band from LB 461). The "No run is excluded" status below is historical.
+
 **Status:** evidence record for the DQ / detector experts. **No run is excluded and no cut has been
 changed by the analysis on this basis** — that decision belongs to the experts
 (memory `feedback_run_exclusion_needs_experts`). Produced 2026-09-17 by

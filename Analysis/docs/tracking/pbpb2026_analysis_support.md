@@ -130,10 +130,13 @@ f. **Efficiencies.** Trigger efficiency is measured per year from that year's ow
   per year; a `default:` branch that quietly hands 2026 the 2025 values is a silent
   physics error. Where a 2026 measurement does not exist yet, the code must either throw
   or carry a loudly-labelled placeholder that is registered in this doc.
-- Do **NOT** apply the 2023 b-hadron-run exclusion logic to 2026 by analogy. 2026 has no
-  bad-run list yet; if one is later defined, its luminosity must leave
-  `PbPbSampledLumi` / `PbPbBaseClass` in the same commit (numerator and denominator must
-  stay consistent).
+- Do **NOT** apply the 2023 b-hadron-run exclusion logic to 2026 by analogy. ~~2026 has no
+  bad-run list yet~~ — **superseded 2026-10-12 by D7** (user decision: 2026 bad runs + bad LBs).
+  Its luminosity must leave `PbPbSampledLumi` / `PbPbBaseClass` (numerator and denominator
+  must stay consistent) — until the regenerated lumitable lands, the 2026 lumi THROWS / is NaN.
+- **D7 exclusion is applied BEFORE ANY analysis step** — in every event-selection cut
+  derivation (not only in the NTuple-stage `PassEventSel`), so the 2026 cuts are fitted on
+  good-data events only.
 - Do **NOT** produce per-year 2026 crossx plots as a new output family; Pb+Pb crossx is
   always the combined result ([[feedback_pbpb_crossx_combined]]).
 - Do **NOT** change the `hi2026` skim (owned by `pbpb2026_skim_and_lgd_storage.md`).
@@ -183,7 +186,7 @@ confirmed or re-derived by the step-14 run.
 |---|------|------------------------|----------------|
 | P1 | Number of 2026 NTUP part files | **7 — CONFIRMED 2026-09-16** (`data_pbpb26_part{1..7}.root`, contiguous; there IS a part 7 = recovery task 52568862, 244 files). `file_batch_max{26}=7`, all `run_pbpb_26*.sub` queue 7, `QUEUE_COUNTS[26]=7`, `ScrambGen::NParts(26)=7`, macro part lists 1..7; `preflight_pbpb_year.sh 26` count-mismatch=0. | done |
 | P2 | Total recorded 2026 events | **270 087 106** entries over the 7 merged parts (skim hand-off 2026-09-16) | done |
-| P3 | 2026 bad-run list | **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
+| P3 | 2026 bad-run list | **SUPERSEDED 2026-10-12 by D7** (522384, 522408 whole; 522336 LB 344-521; 522355 LB >= 448; lumi PENDING the user's regenerated lumitable). Old entry: **empty** (no run excluded) — `PbPbBadRuns` has no 26 entry, so the R_AA luminosity is the full GRL total 2.62316 nb⁻¹ | 2026 DQ review. If it becomes non-empty, subtract those runs' `Prescale Corrected` in `PbPbSampledLumi.h`, `make_crossx_factors_pbpb_2026()` AND the lumi README **in the same change** — numerator and denominator must cover the same runs |
 | P4 | What calibration is the 2026 skim's `centrality` branch on? | **2023 — CONFIRMED 2026-09-16**: 300 000/300 000 events of part1 and of part7 agree with the canonical `FCal_ET_Bins_PbPb2023` recompute (mean 20.44/20.51, max 84, 4.1 % zeros). The `UpdateCentrality` override is a no-op for 2026, exactly as for 2025; nothing to disclose. | done |
 | P5 | Does 2026 need per-run µ+7σ ZDC preamp cuts (2025-style) or a hard scalar (23/24-style)? | **assumed per-run**, i.e. `UsesPerRunPreampCuts(26) = true` in the cuts macro. In the *NTuple processing* this is no longer a guess at all: the loader is now **presence-driven** — it uses per-run cuts iff the year's cuts file contains `t_preamp_per_run` | inspect the 2026 preamp distributions as was done for 2025 |
 | P6 | 2026 hard scalar preamp cut (A, C) [ADC] | **{850, 700}** — copied from 2025 (23: {300,300}, 24: {420,420}) | re-derive from the 2026 1D preamp Gaussian-to-tail turnover |
@@ -232,6 +235,27 @@ the premise holds exactly: `FCal_ET_Bins_PbPb2024` is **byte-identical** to
 at the 2024 vector that editing it alone would silently desynchronise 2024 from the others.
 Still **interim**: revisit when an official 2026 Glauber calibration exists. ⟨T_AA⟩ remains on
 the same 2023 placeholder, consistent with 2024 and 2025.
+
+**D7 — Pb+Pb 2026 bad runs / bad LBs are discarded before ANY analysis step (USER DECISION
+2026-10-12).** User: "for PbPb2026 data we discard the entire runs for Run 522384 and 522408, and
+for Run 522336 and 522355 we discard the bad LBs (for 522336 344-521, 522355 LB >= 448 --> these
+are from ATLAS twiki so use as final LB selections; slightly different from our cut) --> this is
+before ANY analysis step (including event selection)." Physics reason: a recurring ID/IBL
+tracking condition (Step 15-16c: second N_trk^HItight/FCal band, cut 5 removes it only partly →
+central-yield bias). Twiki boundaries are FINAL; they differ from our scan (522336 344-520;
+522355 drift from 445, band from 461; Step 16c's LB-440 discussion). Implementation:
+`PbPbBadRuns(26)` + `PbPbBadLBRanges(26)` + `PbPbIsBadRunLB` in `PbPbEventSelConfig.h` (single
+source); applied in `PbPbExtras::PassEventSel` (NTuple stage, `lbn` branch now enabled) and in
+`plot_pbpb_event_sel_event_level` (both loops — it had applied NO bad-run list before, also not
+2023's), `plot_pbpb_event_sel_cuts` (both loops), `plot_pbpb_fcal_comparison`, and the three cross-year Cut-3 diagnostics `plot_zdc_preamp_{gauss_fit,cut_vs_zdcamp,cut_over_mean}` (review it.1 W2; these also applied no 2023 bad-run list before → their 2023 panels change on regeneration). Evidence tools `fill_pbpb_evsel_run_lb_diag` / `plot_pbpb_ntrk_lowband_runs` deliberately unchanged (they must see the bad LBs). Updated GRL
+`SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml` (+ `run_26hi/` copy; `TrigRates_CA.py`
+`do_hi2026` GRL and `make_grid_sub.sh` point at it); verified LB-by-LB: code exclusion ≡ (original
+GRL − updated GRL), 1161 LBs, 0 mismatches. Luminosity: `PbPbMu4SampledLumiNb(26)` throws and
+`make_crossx_factors_pbpb_2026` uses L = NaN until the user's lumitable from the updated GRL lands.
+Declared side effect: a future 2023 rerun of `plot_pbpb_event_sel_event_level` now drops 2023's two
+b-hadron runs from the cut-1/2 derivation too (0.67 % of 2023 lumi; was inconsistent with
+`plot_pbpb_event_sel_cuts` and `PassEventSel`). The output `lb` branch of the muon-pair trees,
+previously always 0 (branch disabled), is now filled.
 
 **D5 — For year INPUTS the rule is probe-skip-relabel; only year CONSTANTS throw.**
 *Caveat recorded 2026-09-11:* where the probe targets an **earlier stage's output**
@@ -930,6 +954,19 @@ show the same ~2-3 % sawtooth); dropped part f_low 65.9 %. LB 440-444 themselves
 ratio 584-585), so the IBL error is consistent with the drift starting at LB 445. Same event-fraction luminosity
 proxy as Step 16b.
 
+### 2026-10-12 — Step 17: D7 implemented (bad runs / LBs), GRL updated; 2026 evsel + NTuple rerun launched
+
+Decision recorded as D7 (+ §4, P3, `docs/pbpb2026_runs_522384_522408_ntrk_lowband.md` header, lumi
+README, `analysis_metadata.md`). Files: `PbPbEventSelConfig.h`, `PbPbExtras.{h,c}`,
+`DimuonDataAlgCoreT.c` (`lbn` status on), `plot_pbpb_event_sel_{event_level,cuts}.cxx`,
+`plot_pbpb_fcal_comparison.cxx`, `Utilities/PbPbSampledLumi.h`, `PbPbBaseClass.h`; SkimCode GRL/CA.py.
+Tests: boundary unit test (343/344, 521/522, 447/448, whole runs, 2023 unchanged) ALL OK; LB-by-LB
+GRL equivalence 1161/12778 LBs, 0 mismatches; ACLiC compile of the 3 macros; `PbPbAnalysis(26,1)`
+constructs. Pre-change outputs backed up in `~/usatlasdata/dimuon_data/pbpb_2026/pre_badlb_backup_20261012/`.
+Driver `pipelines/run_pbpb26_badlb_evsel_ntuple_20261012.sh` (log `pipelines/logs/pbpb26_badlb_evsel_ntuple_20261012.log`):
+evsel derivation + plots for 26, FCal comparisons, Condor `run_pbpb_26.sub` + `run_pbpb_26_nominal.sub`, hadd.
+Stops before RDF / fits / crossx (user).
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
@@ -985,6 +1022,17 @@ outside the requested 2026 scope and is a user decision.
   until the skim finishes.
 
 ## Latest Stage
+
+**2026-10-12 — Step 17 (IN PROGRESS): USER DECISION — 2026 bad runs / bad LBs excluded.** Plan:
+(1) record the decision (Design Decision D7, Physics Procedure §3d/§4, P3); (2) updated GRL
+`SkimCode/xmls/physics_HI2026_50ns_noIBL_updated.xml` (drop 522384, 522408; 522336 drop LB 344-521;
+522355 drop LB >= 448) + `run_26hi/` copy + `TrigRates_CA.py` / `make_grid_sub.sh`; (3) code: run+LB
+exclusion in `PbPbEventSelConfig.h`, applied BEFORE any step — NTuple stage (`PbPbExtras::PassEventSel`,
+needs `lbn`) and every raw-NTUP event-selection derivation macro; 2026 lumi sites THROW until the user's
+new lumitable (from the updated GRL) lands; (4) rerun 2026 event-selection plots + NTuple processing
+(nominal + trig-eff NTuple); NOT the crossx pipeline. Reviews: /review-analysis-code, /review-plot.
+
+### (previous)
 
 **2026-10-08 — Step 16 DONE (evidence delivered, see Progress entry "Step 16").** Nothing changed in cuts,
 runs or luminosity. Open for the user / experts: run/LB treatment of 522336 LB 344-520, 522355 LB 445/461-649,
