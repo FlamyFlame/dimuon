@@ -337,13 +337,14 @@ the number of input file batches for that year's dataset.
 
 | Year | Queue count | Condor jobs per pipeline |
 |------|-------------|------------------------|
-| 2023 | 5 | 5 per pipeline (10 total across both) |
+| 2023 | 6 | 6 per pipeline (12 total across both) |
 | 2024 | 2 | 2 per pipeline (4 total across both) |
 | 2025 | 7 | 7 per pipeline (14 total across both) |
 | 2026 | 7 | 7 per pipeline (14 total across both) |
 
-Total per pipeline run: 21 condor jobs (5 + 2 + 7 + 7). (2023 part5 and 2025 part7 are the
-Sep-2026 recovery parts; 2026 = 7 merged parts of the completed skim.)
+Total per pipeline run: 22 condor jobs (6 + 2 + 7 + 7). (2023 part5 and 2025 part7 are the
+Sep-2026 recovery parts; 2023 part6 = the Oct-2026 re-skim events of runs 463315/462759 that the
+May merge step lost, deduplicated against part2/3; 2026 = 7 merged parts of the completed skim.)
 
 The 2026 skim was submitted as 5 grid tasks plus recovery parts
 (`SkimCode/run_26hi/grid_sub_part*.sh`); `grid_monitor`'s chunked-hadd fallback can split a

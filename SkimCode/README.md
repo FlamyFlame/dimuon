@@ -276,6 +276,7 @@ Rucio output datasets they came from are listed in
 | Pb+Pb 2026 part 5 (v3) + part 6 (recovery) | `hi2026` | `pbpb_2026/data_pbpb26_part5-6` | `PbPb2026data.Sep2026.v3/v2` | 2026-09-13/14 | 25.2.90 | `cbc700a` |
 | Pb+Pb 2026 part 7 (recovery) | `hi2026` | `pbpb_2026/data_pbpb26_part7` | `PbPb2026data.Sep2026.v2` | 2026-09-15 | 25.2.90 | `fe04e1f` |
 | May-2026 recovery parts: Pb+Pb23 p5, Pb+Pb25 p7, pp24 p13 | `hi2023`/`hi2025`/`pp2024` | `data_pbpb23_part5`, `data_pbpb25_part7`, `data_pp24_part13` | `*.Sep2026.v1` | 2026-09-15 | 25.2.89 | `fe04e1f` |
+| Pb+Pb23 p6: lost events of 463315/462759 | `hi2023` | `data_pbpb23_part6` (re-skim minus events already in part2/3; `SkimCode/scripts/make_pbpb23_part6.C`) | `PbPb2023data.Oct2026.v1.rerun463315_462759` | 2026-10-12 | 25.2.89 | `fe04e1f` |
 
 `fe3b18b` (2026-05-14) is the May-2026 configuration synced back from the run dirs
 (`m_EvtMax = -1`); `source/` had last changed at `b01ce6e` (2026-05-04). The Sep-2026

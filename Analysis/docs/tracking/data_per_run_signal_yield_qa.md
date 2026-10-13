@@ -212,6 +212,8 @@ Rucio files on LGD cannot be rewritten, so the lost events go into a NEW supplem
 5. Wire part6 into the PbPb23 part count (`file_batch_max{23}`, `queue N` in the run_pbpb_23*.sub, plotting part lists).
 
 ## Findings R4
+- Builder: `SkimCode/scripts/make_pbpb23_part6.C` (tested on fakes: dedup 58→30 May+28 new, union unique; aborts on
+  re-skim duplicates and on May events missing from the re-skim, writing nothing).
 - R4a: May-2026 = 15 tasks (`may2026_skim.txt`): PbPb23 50270743 (part1, v2), 50267236, 50267250, 50267265; PbPb24
   50267371, 50267396; PbPb25 50267423, 50267435, 50267444, 50267472, 50267482, 50267490; pp24 50267518, 50267529,
   50267539. Plus the Sep-2026 recovery of the abandoned files (`sep2026_may26_recovery.txt`): 52569154 (PbPb23 part5),
@@ -220,9 +222,36 @@ Rucio files on LGD cannot be rewritten, so the lost events go into a NEW supplem
   identical element by element (23 752 values, TTreeFormula); the re-skim has one extra branch `muon_match_L1MU3V`.
   Skim files hold only the `HeavyIonD3PD` tree. May event lists have no duplicate eventNumbers (462759: 537 740,
   463315: 1 728 372). The two runs occur only in part2/part3 input lists (not part1/4, not the part5 file list).
+- 53029101 `done` 05:38 (2695/2695 files, 0 failed). Merge audit: 1 247 trf outputs (`finished`) and all 1 247 are
+  inputs of the 34 pmerge jobs (no orphan); the other 3 "finished trf" jobs are build jobs (3 lib inputs); the 17 gaps in
+  the EXT0 serials are outputs of failed (retried) attempts. Output 34 files, 5.165 GB, 4 784 435 events, downloading to
+  `~/usatlasdata/dimuon_data/pbpb_2023/rerun_463315_462759/` (subdir: not matched by `data_pbpb23_part*.root`).
+- Download complete (34/34 files, 5 164 654 463 B). Re-skim completeness per LB (`perlb.C`): 463315 402/402 GRL LBs
+  filled, 0 outside GRL, 4 060 027 events, N_HLT/AOD 0.388; 462759 76/76, 724 408 events, 0.398 (neighbour band
+  0.35-0.41). No LB has fewer events than in May; 91 (463315) / 47 (462759) LBs are identical to May.
+- part6 built (`make_pbpb23_part6.C`): 462759 re-skim 724 408 = May 537 740 (all found) + NEW 186 668; 463315 4 060 027
+  = May 1 728 372 (all found) + NEW 2 331 655. `data_pbpb23_part6.root` = 2 518 323 events, 168 branches.
+- Independent verification (`verify6.C`, May lists from the earlier `dumpev.C` dumps, not from the builder): part6 only
+  runs 463315/462759; 0 duplicates in part6, the re-skim and May; part6 ∩ May = 0; every part6 event is in the re-skim
+  with the same LB; May + part6 = re-skim exactly (724 408, 4 060 027); 168/168 part3 branches with the same class.
+- Installed as `~/usatlasdata/dimuon_data/pbpb_2023/data_pbpb23_part6.root` (local file, not LGD). The raw re-skim
+  stays in `pbpb_2023/rerun_463315_462759/` (no glob in the code reaches into it; it must never become a part).
+  Bookkeeping: `data-merging-record.txt`, `oct2026_pbpb23_rerun_diag.txt`.
+- Wiring 5 → 6 parts (sites found by two independent read-only agents, identical lists): `PbPbExtras.c` `{23, 6}`;
+  `queue 6` in the 6 live `run_pbpb_23*.sub` (not `_part4_only`); `QUEUE_COUNTS[23]=6` in `pipeline_pbpb_crossx.sh` /
+  `pipeline_pbpb_trig_eff.sh`; `ScrambGen.h` `case 23: return 6`; part6 added to the file lists of
+  `plot_pbpb_event_sel_cuts`, `_event_level`, `plot_pbpb_fcal_comparison`, the 3 `plot_zdc_preamp_*`,
+  `plot_overlay_rtag_compr_pbpb_data`; nparts 6 in `plot_npairs_vs_centrality`, `plot_muon_q_eta_spectrum`,
+  `plot_muon_q_eta_pt_dependence`; loops `p <= 6` in the 3 one-off `plot_zdc_*_pbpb23`. `preflight_pbpb_year.sh 23`:
+  ok=25, count-mismatch=0, 6 parts on disk; all 13 edited macros pass `g++ -fsyntax-only`. Docs: `pbpb_pipelines.md`
+  job table, `SkimCode/README.md` skim table.
+- Lumi unchanged: the runs' full GRL lumi was already in the lumitable / `PbPbSampledLumi`; part6 only restores events.
+- NOT done (needs user go-ahead): PbPb23 NTuple processing for part6 and everything downstream (event-selection cuts
+  derived from the 2023 part list, PbPb23 crossx/trig-eff hadd, combined PbPb crossx, per-run QA replot).
 
 ## Latest Stage
-2026-10-13 R4: waiting for 53029101 (status `scouting` at 04:31); poller running; then plan R4b steps 2-5.
+2026-10-13 R4: DONE through step 5 — part6 (2 518 323 lost events) built, verified, installed, wired (preflight OK).
+Open: user go-ahead for the PbPb23 NTuple/downstream rerun; audit of the other 16 May/Sep-2026 tasks for merge orphans.
 2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
 submitted. Open: audit every May-2026 task for orphaned outputs; recover the missing files of 463315/462759 (e.g. from
 53029101 once checked complete) → user decision on how to integrate (replace runs in part2/3, no double counting).
