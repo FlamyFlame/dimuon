@@ -19,6 +19,8 @@ Recorded user decisions of the same message (context for future work, not implem
 - D-U1: ε_reco stays defined in TRUTH kinematics; detector migration is handled by
   multidimensional Bayesian unfolding (or sequential 1D only if shown order-independent).
   Bin-by-bin correction only if shown that unfolding is not needed — never assumed.
+  **→ RESOLVED 2026-10-09 (user): shown (migration study) → 3D bin-by-bin in (pT, η^pair, m_μμ),
+  RECO-binned ε^reco = N[R_j]/N[T_j]; see `pair_reco_eff_bin_by_bin_reco_binned.md`.**
 - D-U2: NO same-sign reco efficiency. The template fit stays trigger-corrected only (fakes /
   hadronic / mixed-event have no truth); reco-eff + unfolding apply to the extracted signal yield
   (`low_mass_dimuon_template_fit.md` §3e, unchanged).

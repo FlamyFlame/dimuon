@@ -194,5 +194,7 @@ boundary. Mass bin 4's o = 0.046 is feed-in from truth m > 2.9 GeV (plausibly th
   `_mc_trig_single_muon` tree.
 
 ## Latest Stage
+**USER DECISION 2026-10-09 (resolves the wait):** 3D bin-by-bin correction (no Bayesian unfolding) in
+(pair pT, η^pair, m_μμ) — m_μμ replaces ΔR; implementation in `pair_reco_eff_bin_by_bin_reco_binned.md`.
 Steps 1–5 DONE. Awaiting user decision: pursue bin-by-bin (→ prior-dependence + closure tests,
 Remaining Work) and m_μμ vs ΔR as 3rd axis (now decided by the C_j / feed-in prior dependence, R3).

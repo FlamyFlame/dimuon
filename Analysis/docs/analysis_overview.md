@@ -157,6 +157,8 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   captures that correlation. In central Pb+Pb the efficiency is genuinely lower
   and centrality-dependent (real occupancy effect from the underlying event), not
   a bookkeeping artifact.
+  **Superseded by the 3D bin-by-bin correction of §4c (2026-10-09; not yet in the crossx):** the
+  applied cells become (pair p_T, η^pair, m_μμ) in RECO kinematics; ΔR is dropped as an axis.
   **Definition (2026-09-17; pair category 2026-10-06):** ε_reco^pair(cell) = N[truth
   opposite-sign pair (any origin) in the truth signal region, both muons reconstructed, WP, and
   the reconstructed pair passing the full data selection *including the detector-gap cuts*] /
@@ -172,19 +174,46 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   (`docs/tracking/pair_reco_eff_gap_acceptance.md`).
 
 **Signal acceptance A_sig (2026-10-05/06, `docs/tracking/signal_acceptance_mass_window.md`).**
-The result is an unfolded cross-section in truth pair p_T > 9 GeV, |truth η^pair| < 2.2 — these
+The result is a detector-corrected (3D bin-by-bin, §4c) cross-section in truth pair p_T > 9 GeV, |truth η^pair| < 2.2 — these
 two cuts DEFINE the measured range and are never acceptance-corrected. TARGET (decided 2026-10-06):
 A_sig(pair p_T, η^pair) = N[truth single-b OS in the measured range, both muons p_T > 4.5 GeV &
 |η| < 2.4, **truth mass window**] / N[truth single-b OS in the measured range, both muons |η| < 2.5
-(ID coverage), **no muon-p_T cut, all masses**], applied LAST to the unfolded yield. It contains NO
+(ID coverage), **no muon-p_T cut, all masses**], applied LAST to the detector-corrected yield. It contains NO
 gap cut (that acceptance is in ε_reco^pair above). The single-muon part needs a NEW private Pythia
 truth sample without a muon-p_T generator filter (central samples filter at 3.7 GeV, the old
 private one at 3.5 GeV) — NOT yet produced; currently only the mass-window factor exists (interim):
 Pythia integrated A_sig^mass = 0.749 (≈0.76 → 0.71 with pair p_T, flat in η^pair); POWHEG (bb, no-resonance-cut NTuple) 0.513 — the difference is the B → J/ψ X → μμ fraction of single-b pairs (31 % POWHEG vs 3 % Pythia), an OPEN generator/signal-definition question (tracking doc R4).
 
-**(c) Detector response / unfolding.** Momentum response and bin migration are
-characterized from **Pythia fullsim** and used to unfold the measured spectra to
-particle level.
+**(c) Detector response — 3D BIN-BY-BIN correction (decided 2026-10-09,
+`docs/tracking/pair_reco_eff_bin_by_bin_reco_binned.md`).** Bin migration is corrected
+**bin-by-bin, not by a full (Bayesian) unfolding**, because the migrations are small: in the pp24
+Pythia fullsim every 3D cell with N_eff ≥ 100 has bin-by-bin efficiency ≥ 0.81 and purity ≥ 0.82
+(N[T]-weighted means 0.92), and the response is near-diagonal
+(`docs/tracking/pair_bin_migration_bin_by_bin_feasibility.md` R1–R3). The 3D variables are
+**(pair p_T, η^pair, m_μμ)** — **m_μμ replaces ΔR** as the third axis (285/288 cells populated vs
+144/288 for ΔR, which is kinematically tied to p_T via ΔR ≳ 2m/p_T; ε varies smoothly, ≈4–5 %,
+across the 4 uniform mass bins; out-of-range feed-in ≈2× smaller). The reconstruction-efficiency and
+migration corrections are then ONE factor per RECO cell j:
+
+```
+N^T_j = Σ_{data pairs in reco cell j} w_trig / ε^reco_j ,   ε^reco_j = N[R_j] / N[T_j] = 1/C_j
+```
+
+with T_j = truth OS pairs in truth cell j passing the truth signal selections (no gap cut) and R_j =
+truth-matched pairs passing WP + the full data reco selection (incl. gap cuts) in RECO cell j, truth
+ANYWHERE — the feed-in from outside T is present in data, so it must be in the numerator for the
+output to be N[T_j] (user decision 2026-10-11). The output (summed over m) is the
+efficiency-corrected truth (p_T, η^pair) distribution | truth signal selections — exactly the
+numerator population of A_sig, which is applied next. Not yet propagated to the cross-section
+(which still applies the truth-binned ε_reco(p_T, η^pair, ΔR) of (b) at reco kinematics); remaining
+open: prior (truth-shape) dependence of C_j; feed-in from truth muons below the NTuple truth
+fiducial (pT < 4.5 / |η| > 2.4) is not in the truth-seeded MC tree. The ε^reco η^pair axis stays the canonical
+coarse one even though the single-muon gap windows carve narrow holes into η^pair inside some coarse
+cells (user decision 2026-10-13, option A): the coarse-cell yield is correct only as far as MC models
+the within-cell reco η^pair shape, so a **within-cell η^pair shape systematic** is assigned — reweight
+the MC truth η^pair shape inside each (p_T, η^pair) cell so MC reco matches the trigger-corrected data
+in 0.1 bins and recompute the cell ε (|δ| up to 5 % in the central cell below 26 GeV, ≤ 0.5 % in cells
+without a gap window; tracking doc §3d/R4).
 
 **(d) Normalization.** pp: integrated luminosity. Pb+Pb: number of events and the
 Glauber ⟨T_AA⟩ per centrality (and the total hadronic cross-section for centrality
@@ -203,7 +232,7 @@ cross-year FCal scaling is implemented** — `fcal_scale_pbpb_20YY.root` appears
 documentation only, never in a source file (see `placeholder.md`).
 
 **(f) R_AA & systematics.** Form R_AA from the corrected, normalized pp and PbPb
-spectra; propagate efficiency, unfolding, normalization, and selection
+spectra; propagate efficiency, bin-by-bin detector-correction, normalization, and selection
 systematics.
 
 > The code realizes (a)–(f) through the three-stage pipeline (NTuple processing →
@@ -215,7 +244,7 @@ systematics.
 | Sample | Role |
 |--------|------|
 | **Pythia truth** (5.36 / 5.02 TeV) | Generator-level signal/flavour & origin studies |
-| **Pythia fullsim pp24** | **Reconstruction efficiency** and **detector response / unfolding** (pp) |
+| **Pythia fullsim pp24** | **Reconstruction efficiency** and **detector response** (3D bin-by-bin correction, §4c) (pp) |
 | **Pythia fullsim HIJING overlay** | **Reconstruction efficiency** (PbPb), per centrality; overlay puts HIJING into the detector at hit level |
 | **Powheg truth (bb / cc)** | **NLO signal template** for the template fit (see §6). **bb and cc are two generator modes and their cross sections are ALWAYS ADDED** — see below |
 
@@ -249,7 +278,7 @@ for high-p_T efficiency / response. It is not requested for Run 3. (Details:
 **Level of the template fits — RECONSTRUCTED.** Both the low-mass minv template fit and
 the Δp/p fake-muon fit are performed on **reconstructed quantities**, after
 trigger-efficiency correction but **before** reconstruction-efficiency correction and
-unfolding; the detector corrections and signal acceptance are applied to the extracted
+the bin-by-bin detector correction (§4c); the detector corrections and signal acceptance are applied to the extracted
 signal yield **after** the fit. The mixed-event combinatoric template is built from
 real-data (reconstructed) muons and the fake background has no truth analogue, so the fit
 cannot live at truth. (Detail: `docs/tracking/low_mass_dimuon_template_fit.md` §3.)
