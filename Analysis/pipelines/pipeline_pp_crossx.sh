@@ -12,7 +12,8 @@ set -Eeuo pipefail
 #      (uncorrected -> + trigger -> + trigger + reco)
 #   8) [optional] run MC-data (POWHEG/Pythia vs pp) comparison plots
 #
-# PP has NO event selection (no ZDC, no centrality, no nTrk_HITight).
+# PP has NO event selection (no ZDC, no centrality, no nTrk_HITight); only the bad-LB exclusion
+# PPBadLBRanges (pp24: run 488456 LB 84-220, PPEventSelConfig.h) at the NTuple stage.
 #
 # Usage:
 #   ./pipeline_pp_crossx.sh
@@ -38,7 +39,7 @@ SKIP_CONDOR="${SKIP_CONDOR:-0}"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 PP_DIR="${DATA_BASE}/pp_2024"
 
-QUEUE_COUNT=12
+QUEUE_COUNT=13   # pp24 parts 1-12 + part13 (Sep-2026 recovery); keep equal to PPExtras.c file_batch_max
 
 # ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
 # `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never

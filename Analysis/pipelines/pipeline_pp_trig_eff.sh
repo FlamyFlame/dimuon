@@ -13,7 +13,8 @@ set -Eeuo pipefail
 #   7) validate fitting output (TF1s) and TH2D fallback histograms
 #   8) Pipeline 2 plotting (no-correlation single-muon trigger efficiency)
 #
-# PP has NO event selection (no ZDC, no centrality, no nTrk_HITight).
+# PP has NO event selection (no ZDC, no centrality, no nTrk_HITight); only the bad-LB exclusion
+# PPBadLBRanges (pp24: run 488456 LB 84-220, PPEventSelConfig.h) at the NTuple stage.
 # PP has NO Pipeline 3 (dR corrections excluded — biased procedure).
 #
 # Usage:
@@ -39,7 +40,7 @@ RDF_NTHREADS="${RDF_NTHREADS:-2}"
 DATA_BASE="/usatlas/u/yuhanguo/usatlasdata/dimuon_data"
 PP_DIR="${DATA_BASE}/pp_2024"
 
-QUEUE_COUNT=12
+QUEUE_COUNT=13   # pp24 parts 1-12 + part13 (Sep-2026 recovery); keep equal to PPExtras.c file_batch_max
 
 # ─── `root -l -b`, NEVER `root -l -b -q`, when the macro comes from a HEREDOC ───────────────
 # `root -l -b -q` with no macro argument QUITS BEFORE READING STDIN: the heredoc is never

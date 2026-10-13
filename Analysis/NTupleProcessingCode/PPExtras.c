@@ -21,7 +21,7 @@ void PPExtras<Derived>::InitParamsExtra(){
     for (const auto& r : evsel_bad_lbs_)
         std::cout << "PPExtras: excluding run " << r.run << " LB " << r.lb_lo << "-" << r.lb_hi << std::endl;
 
-    const int file_batch_max = 12;
+    const int file_batch_max = 13;   // parts 1-12 + part13 (Sep-2026 recovery of run 488534, 0 duplicate events)
     if (self().file_batch <= 0 || self().file_batch > file_batch_max) {
         std::cerr << "Error:: pp file_batch invalid! Must be 1-"
                   << file_batch_max

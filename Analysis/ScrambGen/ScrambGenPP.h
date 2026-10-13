@@ -14,6 +14,8 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <stdexcept>
+#include <TSystem.h>
 
 class ScrambGenPP {
 public:
@@ -26,15 +28,17 @@ public:
 private:
    TRandom3 rng;
    static std::string DataDir(){ return "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pp_2024/"; }
-   static const int kNParts = 12;
+   static const int kNParts = 13;   // = PPExtras.c file_batch_max (parts 1-12 + part13, Sep-2026 recovery of run 488534)
    static std::string OutputPath(){ return DataDir() + "muon_pairs_pp_2024_2mu4_scrambled.root"; }
 
    void LoadMuons(std::vector<MuonPP>& muons){
       muons.clear();
       TChain ch("muon_tree");
       for (int p = 1; p <= kNParts; ++p){
-         ch.Add((DataDir() + "single_muon_trees_pp_2024_part" + std::to_string(p) +
-                 "_2mu4_mindR_0_02.root").c_str());
+         const std::string f = DataDir() + "single_muon_trees_pp_2024_part" + std::to_string(p) + "_2mu4_mindR_0_02.root";
+         // a missing part would silently drop its muons from the scrambled background
+         if (gSystem->AccessPathName(f.c_str())) throw std::runtime_error("[ScrambGenPP] missing input " + f);
+         ch.Add(f.c_str());
       }
       MuonPP* m = nullptr;
       ch.SetBranchAddress("MuonObj", &m);
