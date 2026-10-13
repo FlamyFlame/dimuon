@@ -31,7 +31,7 @@ single source of truth in `MuonObjectsParamsAndHelpers/PPBaseClass.h`.
 | `powheg_bb/cc` | POWHEG bb+cc | `1.` (already in cross-section units) |
 | `pythia` | Pythia | `1.` + explicit `Scale(1e6)` at `plot_mc_data_compr.cxx:177` (unit conversion) |
 | `pp_2017` | pp 2017 (Run 2) | `1/256.8` pb⁻¹ |
-| `pp_2024_2mu4` | pp 2024, 2mu4 | `1/410.815` pb⁻¹ |
+| `pp_2024_2mu4` | pp 2024, 2mu4 | `1/395.836` pb⁻¹ |
 | `pp_2024_mu4mu4noL1` | pp 2024, mu4mu4noL1 | `1/113.999` pb⁻¹ |
 
 ### Differential?
@@ -58,7 +58,7 @@ Legend labels are generated dynamically from `DatasetTriggerMap` in `InputOutput
 |---|---|---|
 | (17, 2mu4) | `1/256.8` pb⁻¹ | 256.8 pb⁻¹ |
 | (24, mu4_mu4noL1) | `1/113.999` pb⁻¹ | 113.999 pb⁻¹ |
-| (24, 2mu4) | `1/410.815` pb⁻¹ | 410.815 pb⁻¹ |
+| (24, 2mu4) | `1/395.836` pb⁻¹ | 395.836 pb⁻¹ |
 
 *PbPb* — per-event `weight × crossx_factor(ctr)` via `CalculateWeightForRAA`
 (`PbPbBaseClass.h`), formula per centrality bin:

@@ -17,6 +17,10 @@ void PPExtras<Derived>::InitParamsExtra(){
         throw std::exception();
     }
 
+    evsel_bad_lbs_ = PPBadLBRanges(self().run_year);
+    for (const auto& r : evsel_bad_lbs_)
+        std::cout << "PPExtras: excluding run " << r.run << " LB " << r.lb_lo << "-" << r.lb_hi << std::endl;
+
     const int file_batch_max = 12;
     if (self().file_batch <= 0 || self().file_batch > file_batch_max) {
         std::cerr << "Error:: pp file_batch invalid! Must be 1-"
@@ -42,6 +46,12 @@ void PPExtras<Derived>::PerformTChainFill(){
         std::cerr << "File does not exist: " << file_path << std::endl;
         throw std::exception();
     }
+}
+
+
+template <class Derived>
+bool PPExtras<Derived>::PassEventSelExtra(){
+    return !PPIsBadRunLB(evsel_bad_lbs_, static_cast<int>(self().RunNumber), self().lbn);
 }
 
 

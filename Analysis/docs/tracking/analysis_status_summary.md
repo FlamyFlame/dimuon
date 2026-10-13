@@ -15,18 +15,18 @@ remains.
   - PbPb 2024: 2 parts, 92.6M entries total
   - PbPb 2025: 7 parts (part7 = Sep-2026 recovery, 971 913 entries), ~261.4M entries total
   - PbPb 2026: **skim COMPLETE (2026-09-16)** — 7 parts, 270 087 106 entries, all 35 GRL runs at
-    100 % of their files, 0 duplicate events. Luminosity 2.62316 nb⁻¹ (GRL total) is final.
+    100 % of their files, 0 duplicate events. Luminosity 2.62316 nb⁻¹ was the full-GRL total; **superseded 2026-10-12 by 2.40869 nb⁻¹** (updated-GRL lumitable, 33 runs, bad runs/LBs excluded).
   - pp 2024: 13 parts (12 chunked from 2 grid tasks + part13 = Sep-2026 recovery of run 488534, 652 340 entries; its NTuple rerun is pending)
 
 ## PbPb 2026 — status (added 2026-09-10)
 
 A **fourth** Run-3 Pb+Pb period. It brings the combined Pb+Pb R_AA luminosity from
-4.62621 to **7.24937 nb⁻¹** (≈ 3.7× the Run-2 dimuon analysis, ≈ 1.57× the current
+4.62621 to **7.0349 nb⁻¹** (2026-10-12; was 7.24937 with the full-GRL 2026 value) (≈ 3.6× the Run-2 dimuon analysis, ≈ 1.52× the current
 23+24+25 combination).
 
 | Item | Status |
 |------|--------|
-| Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.62316 nb⁻¹) | **DONE** — run list verified byte-identical to the skim GRL |
+| Luminosity table (`lumitable_pbpb_26_HLT_mu4.csv`, 2.40869 nb⁻¹ since 2026-10-12) | **DONE** — regenerated from the updated GRL; run list == `physics_HI2026_50ns_noIBL_updated.xml` (33 runs) |
 | Lumi + metadata docs (`luminosity/README.md`, `analysis_metadata.md`) | **DONE** |
 | Grid skim (`hi2026`), download, hadd | **DONE 2026-09-16** — 7 parts, 270 087 106 entries, all 35 runs 100 % (`pbpb2026_skim_and_lgd_storage.md`, CLOSED). AthAnalysis 25.2.90. |
 | Analysis-code support (all stages) | **DONE, reviewed PASS 2026-09-16** — `pbpb2026_analysis_support.md` |
