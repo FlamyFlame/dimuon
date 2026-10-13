@@ -32,7 +32,7 @@ modified by the medium relative to a pp baseline.
 
 Datasets (Run 3): **pp 2024** (√s = 5.36 TeV) as the reference, and **Pb+Pb
 2023 / 2024 / 2025 / 2026** (√s_NN = 5.36 TeV), combined for all Pb+Pb results
-(Σ L_int = 7.24937 nb⁻¹). Run 2 code paths (pp17, PbPb15/18)
+(Σ L_int = 7.0349 nb⁻¹; 2026 = 2.40869 nb⁻¹ from the updated-GRL lumitable, 2026-10-12). Run 2 code paths (pp17, PbPb15/18)
 exist only for cross-checks and are not maintained for new analysis decisions.
 
 ## 2. The signal: a single-b dimuon
