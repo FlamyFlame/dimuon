@@ -1024,6 +1024,13 @@ outside the requested 2026 scope and is a user decision.
 
 ## Remaining Work
 
+- **OPEN (user, 2026-10-12): Pb+Pb 2026 needs a careful PROOFREAD EVERYWHERE for the GRL update** (original `physics_HI2026_50ns_noIBL.xml`, 35 runs
+  -> `physics_HI2026_50ns_noIBL_updated.xml`, 33 runs; L 2.62316 -> 2.40869 nb^-1; Σ23-26 7.24937 -> 7.0349 nb^-1). Both **code**
+  (every site keyed on the 2026 GRL / run list / luminosity / bad runs+LBs: `PbPbEventSelConfig.h`, `PbPbSampledLumi.h`, `PbPbBaseClass.h`,
+  event-selection derivation macros, `data_qa/` macros incl. `run_norm_diagnostics.cxx:84` NaN-L handling, pipelines, skim scripts/GRL copies) and **IntNotes**
+  (`tex/datasets.tex` has NO 2026 at all: prose "2023, 2024, 2025", event-count table, lumi table, GRL table; other chapters quoting 2.62316 / 7.24937 / the 35-run GRL;
+  `analysis_metadata.md`; luminosity README) must be re-read line by line; a stale full-GRL number anywhere silently breaks numerator/denominator consistency.
+  Not done as part of Step 18 (which only wired the luminosity constant and synced the docs listed there).
 - **Step 10:** `/review-analysis-code` on the C++/RDF changes and `/review-pipeline` on the
   pipeline changes (per the project's per-step protocol).
 - **After the skim lands:** confirm every Placeholder Registry item P1–P12; run
