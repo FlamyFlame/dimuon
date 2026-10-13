@@ -39,7 +39,7 @@ namespace evsr {
 inline std::pair<int,int> RunRange(int yr) {
     if (yr == 23) return {460000, 464000};
     if (yr == 24) return {488000, 491000};
-    if (yr == 25) return {508000, 512000};
+    if (yr == 25) return {508000, 514000};   // 2025 lumitable runs 510493-512049
     if (yr == 26) return {522000, 524000};
     throw std::runtime_error("evsel_single_run: no run range for year " + std::to_string(yr));
 }
