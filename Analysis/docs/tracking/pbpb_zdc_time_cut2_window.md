@@ -108,6 +108,15 @@ file, same t^A–t^C binning as the derivation) → `plots/single_b_analysis/eve
 2025: cuts 3–5 per-cut survival unchanged to ≤ 0.02 %. 2026: the cut-2 improvement is the dropped runs, whose events failed cut 2.
 **Per-run kept fraction plots**: `plots/data_qa/cut2_window_per_run/pbpb{25,26}_cut2_window_kept_fraction_per_run*.png` (+ CSVs).
 
+**2025 per-run ZDC t^C vs t^A (2026-10-13 13:07)** — `plotting_codes/event_selection/plot_pbpb_zdc_time_per_run.cxx` →
+`plots/single_b_analysis/event_selection/pbpb_2025/zdc_time_per_run/zdc_time_A_vs_C_per_run_pbpb_2025.png` (42 runs, 7×6, unit area,
+common log z; red box ±1.5 ns, blue line −0.6 ns) + `zdc_time_regions_per_run_pbpb_2025.csv` (HLT_mu4, good run/LB, after cut 1,
+t^C in ±1.5 ns). Shoulder (−1.5 < t^A < −0.6): median 9.4 %, range 3.7–11.6 %; blob (−4 < t^A < −2): median 0.47 %, range
+0.00–0.71 %; the largest single-run share of either is ≈5 %. Only 510510 (small run) differs (3.7 %, no blob). → **UNLIKE 2026:
+the 2025 off-centre clusters are in EVERY run at the same level, so dropping a few runs cannot remove them.** Options for a
+common window across years: keep ±1.5 ns in 2025 (clusters stay in) or keep −0.6 ns and treat the ≈9 % as an efficiency. User
+decision.
+
 ## Remaining Work
 - User: check the plots, finalize cut 2 → then NTuple rerun (25, 26) and downstream.
 
