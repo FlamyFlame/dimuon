@@ -95,11 +95,29 @@ file, same t^A–t^C binning as the derivation) → `plots/single_b_analysis/eve
   rerun (the running one includes them). analysis-3d informed 2026-10-13 00:05; it reruns NTuples for pp24/25/26 after the
   event selection is done → ping it on completion.
 
+**New cuts files (verified 02:45)**: 2025 nominal 00:42 / alt 01:40 (this session), 2026 nominal 01:55 / alt 02:42
+(analysis-3d, "Excluding 4 bad run(s) and 2 bad-LB range(s)"). `PbPbReadZdcTimeWindow` on all four: 2025 tA (−0.60, 1.50),
+2026 tA (−1.50, 0.80), tC (−1.50, 1.50); legacy key gone (also from the UPDATE-mode alt files).
+**Acceptance old vs new** (derivation counts, HLT_mu4, centrality 0–79; overlay `plot_pbpb_event_sel_survival_old_vs_new.cxx` →
+`plots/single_b_analysis/event_selection/pbpb_20YY/event_sel_survival{,_accum}_old_vs_new_pbpb_20YY.png`; counts saved as
+`event_sel_survival_counts_pbpb_20YY.txt` (new) and `pre_cut2_window_20261012/…` (old)):
+| Year | C2 per-cut old → new | cumulative after C5 old → new |
+|---|---|---|
+| 2025 | 97.883 % → **88.820 %** | 97.328 % → **88.296 %** |
+| 2026 | 99.190 % → 99.836 % | 98.546 % → 99.192 % (old INCLUDES 522200/522041, new excludes them) |
+2025: cuts 3–5 per-cut survival unchanged to ≤ 0.02 %. 2026: the cut-2 improvement is the dropped runs, whose events failed cut 2.
+**Per-run kept fraction plots**: `plots/data_qa/cut2_window_per_run/pbpb{25,26}_cut2_window_kept_fraction_per_run*.png` (+ CSVs).
+
 ## Remaining Work
 - User: check the plots, finalize cut 2 → then NTuple rerun (25, 26) and downstream.
 
 ## Latest Stage
-2026-10-13 00:45: HAND-OVER. The analysis-3d session (tracking doc `ntuple_rerun_pp24_pbpb2526_20261013.md`) killed my 2026
+2026-10-13 02:50: Step 5 cuts DONE for both years (above); overlays + per-run plots delivered. analysis-3d continues with the 4 FCal
+comparisons and the pbpb25/26 NTuple reruns. The user is finalizing cut 2 from the plots. Open flag: 2025 loses ≈9 % of
+HLT_mu4 0–80 % events at cut 2 (every run 4–11 %); the shoulder events look like real collisions → uncorrected yield loss
+unless treated as an efficiency.
+
+(previous) 2026-10-13 00:45: HAND-OVER. The analysis-3d session (tracking doc `ntuple_rerun_pp24_pbpb2526_20261013.md`) killed my 2026
 redo (SIGTERM 00:39) and runs `pipelines/run_evsel26_fcal_ntuple_20261013.sh`: 2026 event_level → cuts → cuts_alt (own
 build dir, checks "Excluding 4 bad run(s)"), then waits on my 2025 chain PID and checks the 2025 cuts files are fresh, then the
 4 FCal comparisons (parallel), then the pbpb25 + pbpb26 NTuple reruns. This session owns ONLY the running 2025 cuts + cuts_alt
