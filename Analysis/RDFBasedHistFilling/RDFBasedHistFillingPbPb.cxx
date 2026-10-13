@@ -3,6 +3,42 @@
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
 #include "../Utilities/PbPbSampledLumi.h"
+#include "../MuonObjectsParamsAndHelpers/FullSimSampleType.h"
+#include "../Utilities/PbPbRecoEffScaledPlaceholderEvaluator.h"
+
+// =================================================================================================
+// Pb+Pb pair reco-efficiency PLACEHOLDER, SCALED to the Run-3 signal region (2026-10-13,
+// docs/tracking/crossx_raa_reco_binned_propagation_20261013.md §2):
+//   eps_PbPb = E_Run2(pair-pT bin, centrality interval) * G_j(reco pT, eta^pair, m)
+// E_Run2 = the Run-2 single-muon MC placeholder product (colleague's fits), averaged over eta^pair on the
+// pp24 fullsim truth signal pairs -> keeps ONLY its pair-pT and centrality dependence; G = pp24 fullsim
+// eps^{reco,SF}_j / eps^{nogap}(pT) -> the gap-cut acceptance, the eta^pair/m shape and the data/MC SF
+// product. REPLACES the per-pair eps_Run2(1)*eps_Run2(2) (no gap acceptance, wrong eta^pair dependence,
+// no SFs). ONE definition (DefinePbPbRecoEffColumns) for every pull. Heap-held: RDF Defines are lazy.
+// =================================================================================================
+static PbPbRecoEffScaledPlaceholderEvaluator* s_pbpb_reco_eff = nullptr;
+static int s_pbpb_reco_eff_wp = -1;
+
+static void OpenPbPbRecoEffScaledPlaceholder(bool use_tight)
+{
+    if (s_pbpb_reco_eff_wp >= 0 && s_pbpb_reco_eff_wp != (use_tight ? 1 : 0))
+        throw std::runtime_error("OpenPbPbRecoEffScaledPlaceholder: already loaded for the OTHER working point. "
+                                 "Run one WP per process.");
+    if (!s_pbpb_reco_eff) {
+        s_pbpb_reco_eff = new PbPbRecoEffScaledPlaceholderEvaluator();
+        s_pbpb_reco_eff->Load(FullSimRecoEffDir(FullSimSampleInputDir(FullSimSampleType::pp, /*is_test_sample=*/false))
+                              + "pbpb_reco_eff_scaled_placeholder.root", use_tight);
+    }
+    s_pbpb_reco_eff_wp = use_tight ? 1 : 0;
+}
+
+// THE per-pair reco efficiency (floored at 0.05 inside the evaluator), used by every Define of
+// effcy_reco_pair below (with w_reco = 1/effcy_reco_pair). ctr < 0 (failed centrality; excluded upstream
+// by the centrality acceptance) -> -1 = no correction, as before.
+static double PbPbRecoEffPair(float pair_pt, float pair_eta, float minv, int ctr)
+{
+    return ctr < 0 ? -1.0 : s_pbpb_reco_eff->Eval(pair_pt, pair_eta, minv, ctr);
+}
 
 void RDFBasedHistFillingPbPb::SetIOPathsHook(){
 	infile_var1D_json = "var1D_pbpb.json";
@@ -563,6 +599,8 @@ void RDFBasedHistFillingPbPb::FillTrigEffcyHistsInvWeightedbySingleMuonEffcies()
 
 //--------- DATA HIST POST PROCESSING ---------
 void RDFBasedHistFillingPbPb::HistPostProcessPbPb(){
+    // After the event loop: census of the scaled reco-eff placeholder (clamps, fallbacks, floor).
+    if (s_pbpb_reco_eff) s_pbpb_reco_eff->PrintStats();
     if (!trigger_effcy_calc) return; // Pipeline 1 (nominal): no PbPb-specific trigger efficiency post-processing
 
     if (hist_filling_cycle == generic) {
@@ -972,7 +1010,7 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     std::cout << "[PbPb] FillHistogramsCrossx: opposite-sign only, signal cuts, centrality-aware weighted crossx histograms" << std::endl;
 
     OpenEffcyPtFitFile();
-    OpenRecoEffPlaceholderFile(isTight);  // Run 2 reco-eff PLACEHOLDER (eps1*eps2 proxy, per-centrality; WP-matched keys)
+    OpenPbPbRecoEffScaledPlaceholder(isTight);  // SCALED Run-2 reco-eff placeholder (E_Run2 * G; WP-matched)
 
     // SIGNAL REGION. MIGRATED 2026-09-08 (user decision D1,
     // docs/tracking/mu_pt45_gap125_pairpt9_adoption.md) from the retired standalone per-muon
@@ -1059,20 +1097,11 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
         .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
         .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-        // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/(eps_reco1*eps_reco2)
-        // (eps1*eps2 proxy), per-centrality via avg_centrality. Floor the pair eff
-        // at 0.05 to bound the 1/eps blow-up near threshold; lookup failure -> w_reco=1.
-        // ctr < 0 (invalid PbPb centrality) must NOT fall through to the pp
-        // barrel/endcap graphs (centrality<0 is the pp sentinel); return 1 (no
-        // reco correction) instead.
-        .Define("effcy_reco1", [](int ctr, float pt, float qe) {
-            return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-        }, {"avg_centrality", "m1.pt", "q_eta1"})
-        .Define("effcy_reco2", [](int ctr, float pt, float qe) {
-            return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-        }, {"avg_centrality", "m2.pt", "q_eta2"})
-        .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-        .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+        // Per-pair reco-efficiency PLACEHOLDER weight w_reco = 1/eps_PbPb, the SCALED Run-2 placeholder
+        // E_Run2(pT, centrality) * G(pT, eta^pair, m) (header block above PbPbRecoEffPair; floored at 0.05
+        // inside the evaluator; ctr < 0 -> no correction).
+        .Define("effcy_reco_pair", PbPbRecoEffPair, {"pair_pt", "pair_eta", "minv", "avg_centrality"})
+        .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0")
         // PLACEHOLDER: unfolding identity until det-response unfolding lands (roadmap Q4).
         // NOTE: real unfolding is NOT a per-pair weight — it is a SPECTRUM-LEVEL
         // operation (response matrix / iterative Bayes on the histogram). Implementing
@@ -1229,14 +1258,8 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
             }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
             .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
             .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-            .Define("effcy_reco1", [](int ctr, float pt, float qe) {
-                return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-            }, {"avg_centrality", "m1.pt", "q_eta1"})
-            .Define("effcy_reco2", [](int ctr, float pt, float qe) {
-                return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-            }, {"avg_centrality", "m2.pt", "q_eta2"})
-            .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+            .Define("effcy_reco_pair", PbPbRecoEffPair, {"pair_pt", "pair_eta", "minv", "avg_centrality"})
+            .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0")
             .Define("weight_for_RAA",
                 [this](int avg_centrality, double weight) { return this->CalculateWeightForRAA(avg_centrality, weight); },
                 {"avg_centrality", "weight"})
@@ -1431,14 +1454,8 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
                 }, {"ctr_suf", "m2.charge", "m2.pt", "q_eta2"})
                 .Define("effcy_pair", "effcy1 > 0 && effcy2 > 0 ? (double)(effcy1 + effcy2 - effcy1 * effcy2) : -1.0")
                 .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-                .Define("effcy_reco1", [](int ctr, float pt, float qe) {
-                    return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-                }, {"avg_centrality", "m1.pt", "q_eta1"})
-                .Define("effcy_reco2", [](int ctr, float pt, float qe) {
-                    return ctr < 0 ? 1.0f : RDFBasedHistFillingData::EvaluateSingleMuonRecoEffPlaceholder(ctr, pt, qe);
-                }, {"avg_centrality", "m2.pt", "q_eta2"})
-                .Define("effcy_reco_pair", "effcy_reco1 > 0 && effcy_reco2 > 0 ? (double)(effcy_reco1 * effcy_reco2) : -1.0")
-                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / (effcy_reco_pair < 0.05 ? 0.05 : effcy_reco_pair) : 1.0")
+                .Define("effcy_reco_pair", PbPbRecoEffPair, {"pair_pt", "pair_eta", "minv", "avg_centrality"})
+                .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0")
                 .Define("weight_for_dsigma_trig_corr",
                     [dsigma_lumi_factor](double weight, double w_reco, double w_trig){
                         return weight * dsigma_lumi_factor * w_reco * w_trig;

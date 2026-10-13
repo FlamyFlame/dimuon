@@ -3,7 +3,7 @@
 #include <algorithm>
 #include "RDFBasedHistFillingData.cxx"
 #include "../Utilities/PairTrigEffCrossxEvaluator.h"
-#include "../Utilities/PairRecoEffEvaluator.h"
+#include "../Utilities/PairRecoEffRecoBinnedEvaluator.h"
 
 void RDFBasedHistFillingPP::SetIOPathsHook(){
     infile_var1D_json = "var1D_pp.json";
@@ -327,9 +327,14 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
 //     on the opposite-sign numbers TEMPORARY, D3 signal-window number for every pair, D4 no raw
 //     tier). Configuration named ONCE in dr_correction_sample_cfg.h.
 //
-//   eps_reco^pair(pair pT, pair eta, dR)  -- the pp24-fullsim PAIR reconstruction efficiency,
-//     REPLACING the Run 2 single-muon eps_1*eps_2 placeholder (which had no dR dependence at all).
-//     Utilities/PairRecoEffEvaluator.h. Since 2026-09-17 it INCLUDES the detector-gap acceptance:
+//   eps^{reco,SF}_j, j = RECO (pair pT, eta^pair, m_mumu) cell  -- the pp24-fullsim 3D BIN-BY-BIN pair
+//     reconstruction correction (user 2026-10-09/11, docs/tracking/pair_reco_eff_bin_by_bin_reco_binned.md:
+//     eps_j = N[R_j]/N[T_j], numerator in reco kinematics incl. out-of-T feed-in, no cap), with every MC
+//     R pair weighted by the product of its two single-muon data/MC efficiency SFs (2026-10-13,
+//     docs/tracking/crossx_raa_reco_binned_propagation_20261013.md). Evaluated at the data pair's RECO
+//     (pT, eta^pair, m) -- the binning it is defined in. Utilities/PairRecoEffRecoBinnedEvaluator.h
+//     (SF product). REPLACES the truth-binned eps_reco(pT, eta^pair, dR) of PairRecoEffEvaluator.h.
+//     Like its predecessor (since 2026-09-17) it INCLUDES the detector-gap acceptance:
 //     the gap cuts of the signal region below (fiducial q*eta windows on both muons, |eta^pair|
 //     < 2.2) sit on its RECO numerator only, its truth denominator carries the signal cuts alone
 //     (docs/tracking/pair_reco_eff_gap_acceptance.md). So the corrected yield refers to the truth
@@ -342,7 +347,7 @@ void RDFBasedHistFillingPP::MakeAndWriteSingleMuonTrigEffPtGraphs(){
 // evaluator would be destroyed before the event loop runs.
 // =================================================================================================
 static PairTrigEffCrossxEvaluator* s_pair_trig_eff = nullptr;
-static PairRecoEffEvaluator*       s_pair_reco_eff = nullptr;
+static PairRecoEffRecoBinnedEvaluator* s_pair_reco_eff = nullptr;
 
 static int s_pair_eff_loaded_wp = -1;   // -1 = nothing loaded; else the isTight the maps carry
 
@@ -364,8 +369,11 @@ void RDFBasedHistFillingPP::OpenPairEfficiencyInputs()
         s_pair_trig_eff->Load(mc, isTight);
     }
     if (!s_pair_reco_eff) {
-        s_pair_reco_eff = new PairRecoEffEvaluator();
-        s_pair_reco_eff->Load(DrCorrPairRecoEffFile(mc), isTight);
+        // 3D bin-by-bin, SF-corrected product (build_pp24_fullsim_pair_reco_eff_reco_binned.C(true)); the
+        // evaluator refuses any file without the SF definition marker.
+        s_pair_reco_eff = new PairRecoEffRecoBinnedEvaluator();
+        s_pair_reco_eff->Load(FullSimRecoEffDir(mc.sample_dir) + "pair_reco_eff_reco_binned_sf_" + mc.mc_label + ".root",
+                              isTight, /*use_sf=*/true);
     }
     s_pair_eff_loaded_wp = isTight ? 1 : 0;
 }
@@ -409,11 +417,12 @@ ROOT::RDF::RNode RDFBasedHistFillingPP::AddPairEfficiencyWeightColumns(ROOT::RDF
         }, {"dr", "pair_pt", "pair_eta", "effcy1", "effcy2",
             "m1.pt", "m1.eta", "m1.charge", "m2.pt", "m2.eta", "m2.charge"})
         .Define("w_trig", "effcy_pair > 0 ? 1.0 / effcy_pair : 0.0")
-        // pp24-fullsim PAIR reco efficiency. Already floored inside the evaluator; a -1 means no
-        // level of the map carries a measurement, which the caller must treat as "no correction".
-        .Define("effcy_reco_pair", [](float pair_pt, float pair_eta, float dr) {
-            return s_pair_reco_eff->Eval(pair_pt, pair_eta, dr);
-        }, {"pair_pt", "pair_eta", "dr"})
+        // pp24-fullsim 3D bin-by-bin, SF-corrected PAIR reco efficiency at the RECO (pT, eta^pair, m).
+        // Already floored inside the evaluator; a -1 means no level of the map carries a measurement,
+        // which the caller must treat as "no correction".
+        .Define("effcy_reco_pair", [](float pair_pt, float pair_eta, float minv) {
+            return s_pair_reco_eff->Eval(pair_pt, pair_eta, minv);
+        }, {"pair_pt", "pair_eta", "minv"})
         .Define("w_reco", "effcy_reco_pair > 0 ? 1.0 / effcy_reco_pair : 1.0");
 }
 
