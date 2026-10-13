@@ -123,6 +123,26 @@ histograms are also saved with `_no_trig_corr` suffix for comparison.
 - PbPb crossx plots are always combined across all years; per-year plots
   are not produced
 
+### OS-SS subtracted TAA-weighted / counts crossx (optional add-on, not a pipeline stage)
+
+The nominal combined crossx/counts figures (Stage 6) are opposite-sign (OS) only: the SS yield is subtracted
+only downstream, in R_AA. A parallel OS-SS-subtracted figure set is produced on demand, never overwriting the nominal one:
+
+1. **Fill** (per year): `RDFBasedHistFilling/run_crossx_hist_filling_pbpb_ss_subtr.sh <yy>` sets
+   `RDFBasedHistFillingPbPb::ss_subtr_crossx = true` (with the nominal mu4 flags). `FillHistogramsCrossx` then books ONLY the
+   plotted families (pT-eta 2D, pT-m_mumu 2D, pT-dR 2D, dR-eta-pT 3D, weighted + `_counts`, per centrality bin; pT_bins_150
+   and the partial `pt_120` family) as OS under the NOMINAL names plus an SS twin (`h2d_ss_...`/`h3d_ss_...`) from `df_ss` with the
+   same `signal_cuts`, centrality filter, Tight WP and weight chain (`attach_ss_corr_weights` = the OS chain). Output:
+   `histograms_real_pairs_pbpb_20<yy>_<trig>_no_trg_plots_nominal_ss_subtr_crossx.root` (suffix `_ss_subtr_crossx`; nominal file untouched).
+2. **Plot**: `plot_single_b_crossx_pbpb(true, true)` (`ss_subtr = true`) draws combined(OS) - combined(SS)
+   (lumi-weighted for the weighted histograms, plain sums for counts; errors add in quadrature) into
+   `plots/single_b_analysis/pbpb_<years>_combined_SS_subtr/{TAA_weighted,counts}/` and `..._pt_120_SS_subtr/`. y/z titles carry the
+   "OS-SS" prefix. OS-SS <= 0 cells are not drawable on the log axes; the plotter prints their count per histogram.
+3. **Input provenance**: the OS part equals the nominal histograms only if filled from the same NTuples as the nominal files. For the
+   old-GRL deliverable of 2026-10-13 that means the frozen NTuples (run-only worktree branch `ss_subtr_oldgrl_run_20261013` =
+   `crossx_old_grl_run_20261013` + this change); with the live (new-GRL/ZDC) NTuples 2025/2026 differ (e.g. 2025 ctr0-5 counts 6935 vs 13696).
+   Compare `h2d_op_..._ctr0_5` integrals against the nominal file before trusting a refill.
+
 ### RDF Configuration (Pipeline 1)
 
 | Setting | Value | Effect |

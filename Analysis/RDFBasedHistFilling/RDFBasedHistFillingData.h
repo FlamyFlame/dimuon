@@ -219,6 +219,14 @@ enum HistFillingCycle{
     // mixed-event combinatoric template T_mix to a distinct *_template_fit_mixed_event output. Same
     // 0-4 GeV OS+SS minv fill as the data D_OS/D_SS. Must stay public (cling-macro set; cf. incident).
     bool mixed_event_template = false;
+    // PUBLIC (cling-macro set; must stay public, cf. the incident above). OS-SS SUBTRACTION crossx pass
+    // (Pb+Pb): books ONLY the TAA-weighted + counts families that the combined crossx plotter draws
+    // (pT-eta, pT-m_mumu, pT-dR 2Ds, dR-eta-pT 3D; nominal pT_bins_150 and opt-in pT_bins_120), each as
+    // an OS histogram under its NOMINAL name plus an SS twin ("h2d_ss_..."/"h3d_ss_...") filled with
+    // identical cuts, binning and weight chain from df_ss, to a DISTINCT output
+    // (out_file_suffix += "_ss_subtr_crossx") so the nominal crossx file is never rewritten.
+    // Reads the same V1 input as nominal: set mu4_nominal_pbpb_NO_trig_calc too. Not for trigger_effcy_calc.
+    bool ss_subtr_crossx = false;
 
     bool save_non_sepr_trg_hists = false; // save trigger efficiency histograms without separation requirement
     bool save_good_accept_trg_hists = false; // save trigger efficiency histograms with good acceptance requirement

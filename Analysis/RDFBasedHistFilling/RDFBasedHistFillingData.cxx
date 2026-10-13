@@ -141,6 +141,8 @@ void RDFBasedHistFillingData::InitializeDataCommon(){
     // Mixed-event combinatoric template (T_mix) goes to a further-distinct output so it never
     // overwrites the _no_res_cut template-fit (D_OS/D_SS) nor the nominal crossx.
     if (low_mass_template_calc && mixed_event_template) out_file_suffix += "_mixed_event";
+    // OS-SS subtraction crossx pass: distinct output, never the nominal crossx file.
+    if (ss_subtr_crossx) out_file_suffix += "_ss_subtr_crossx";
 }
 
 void RDFBasedHistFillingData::FillHistograms(){

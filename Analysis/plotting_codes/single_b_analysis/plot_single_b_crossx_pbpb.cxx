@@ -4,8 +4,17 @@
 // ======================== PbPb combined-year plotter ========================
 // Sums histograms from all available PbPb years. This is the only supported
 // mode — per-year plots are not produced.
+//
+// ss_subtract = true: OS-SS SUBTRACTED version of the same figure set. Every histogram is the
+// combined OS histogram minus the combined SS twin (same cuts, binning and weight chain, booked
+// together by RDFBasedHistFillingPbPb with ss_subtr_crossx = true into the *_ss_subtr_crossx.root
+// files), written to pbpb_<years>_combined[_pt_120]_SS_subtr/. The nominal OS-only figures are
+// never touched. Errors: both terms carry Sumw2, so the subtraction adds them in quadrature.
 
 class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
+public:
+    bool ss_subtract = false;   // set before Run(); public so a cling macro assignment compiles
+private:
     std::vector<std::pair<int,std::string>> year_paths_;  // (2-digit year, file path)
     std::vector<TFile*>  files_;
     std::map<std::string,TH1*> hist_cache_;  // owned combined histograms
@@ -31,8 +40,21 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
                             + " (20" + std::to_string(yr) + ")";
         }
         label_line1_ = "Pb+Pb " + yrs_str + " combined";
-        label_line2_ = "tight WP";
+        label_line2_ = ss_subtract ? "tight WP, OS#minusSS" : "tight WP";
     }
+
+    // SS twin of an OS histogram name, following the producer's convention: the OS eta-vs-pT 2D
+    // already carries "op_" (-> "ss_"); every other name gets "ss_" inserted after "h2d_"/"h3d_".
+    static std::string SsTwinName(const std::string& os_name) {
+        const std::size_t p = os_name.find("h2d_op_");
+        if (p == 0) return "h2d_ss_" + os_name.substr(7);
+        if (os_name.rfind("h2d_", 0) == 0 || os_name.rfind("h3d_", 0) == 0)
+            return os_name.substr(0, 4) + "ss_" + os_name.substr(4);
+        throw std::runtime_error("SsTwinName: cannot derive the SS twin of '" + os_name + "'");
+    }
+    // Prefix for the y/z titles of the subtracted version (the right-aligned header lines are already
+    // as wide as the pad, so the OS-SS marking lives in the axis title, not the header).
+    std::string Ttl(const std::string& t) const { return ss_subtract ? "OS#minusSS " + t : t; }
 
     // The drawn label must describe the years that ACTUALLY contributed to THIS histogram, not the
     // years the job was asked to combine. GetCombined() already records them per histogram name and
@@ -64,6 +86,7 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
         s += "_combined";
         // "" for the nominal 9 -> 150 GeV view, "_pt_120" for the opt-in alternative.
         s += PtAxisDirSuffix();
+        if (ss_subtract) s += "_SS_subtr";
         return s;
     }
 
@@ -123,7 +146,47 @@ class SingleBCrossxPlotterPbPbCombined : public SingleBCrossxPlotterBase {
     }
 
 protected:
+    // OS - SS wrapper around the per-year combination. A histogram present for NEITHER sign is
+    // "not booked" (nullptr -- the pt_120 view skips it); present for only ONE sign is a producer
+    // error and throws: returning the lone OS histogram would put an unsubtracted figure in the
+    // _SS_subtr directory.
     TObject* GetHistObject(const std::string& name) override {
+        if (!ss_subtract) return GetCombined(name);
+        const std::string key = "OSminusSS::" + name;
+        auto it = hist_cache_.find(key);
+        if (it != hist_cache_.end()) return it->second;
+        TH1* os = dynamic_cast<TH1*>(GetCombined(name));
+        TH1* ss = dynamic_cast<TH1*>(GetCombined(SsTwinName(name)));
+        if (!os && !ss) return nullptr;
+        if (!os || !ss)
+            throw std::runtime_error("OS-SS subtraction: '" + name + "' (OS) and its SS twin '" + SsTwinName(name)
+                                     + "' are not both present in the input files -- refill with ss_subtr_crossx = true.");
+        TH1* diff = dynamic_cast<TH1*>(os->Clone(key.c_str()));
+        diff->SetDirectory(nullptr);
+        diff->Add(ss, -1.0);
+        if (combined_years_[name] != combined_years_[SsTwinName(name)])
+            throw std::runtime_error("OS-SS subtraction: '" + name + "' OS and SS contributing years differ");
+        // Non-positive OS-SS cells (statistical fluctuation where SS >= OS) cannot be drawn on the
+        // log axes of these figures; they look like empty cells. Report them instead of dropping
+        // them silently.
+        {
+            long n_nonpos = 0, n_filled = 0;
+            const int nb = diff->GetNcells();
+            for (int b = 0; b < nb; ++b) {
+                if (diff->IsBinUnderflow(b) || diff->IsBinOverflow(b)) continue;
+                if (os->GetBinContent(b) == 0. && ss->GetBinContent(b) == 0.) continue;
+                ++n_filled;
+                if (diff->GetBinContent(b) <= 0.) ++n_nonpos;
+            }
+            if (n_nonpos > 0)
+                std::cout << "[INFO] OS-SS " << name << ": " << n_nonpos << " of " << n_filled
+                          << " filled cells have OS-SS <= 0 and are NOT drawn on the log axes." << std::endl;
+        }
+        hist_cache_[key] = diff;
+        return diff;
+    }
+
+    TObject* GetCombined(const std::string& name) {
         auto it = hist_cache_.find(name);
         if (it != hist_cache_.end()) return it->second;
 
@@ -206,59 +269,59 @@ public:
                 output_dir = counts_dir;
                 Save2DColz(PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts"),
                            tag + "_pair_pt_pair_eta.png",
-                           "d^{2}N_{events}/dp_{T}d#eta [GeV^{-1}]");
+                           Ttl("d^{2}N_{events}/dp_{T}d#eta [GeV^{-1}]"));
                 Save2DColz(PtAxisHist("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts"),
                            tag + "_pair_pt_minv.png",
-                           "d^{2}N_{events}/dp_{T}dm_{#mu#mu} [GeV^{-1} GeV^{-1}]");
+                           Ttl("d^{2}N_{events}/dp_{T}dm_{#mu#mu} [GeV^{-1} GeV^{-1}]"));
                 Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr + "_counts"),
                            tag + "_pair_pt_dr.png",
-                           "d^{2}N_{events}/dp_{T}d#DeltaR [GeV^{-1}]");
+                           Ttl("d^{2}N_{events}/dp_{T}d#DeltaR [GeV^{-1}]"));
                 {
                     const std::string hn = PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr + "_counts");
                     DrawPairPtByEtaWithDrLines(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                        "dN_{events}/dp_{T} [GeV^{-1}]");
+                        Ttl("dN_{events}/dp_{T} [GeV^{-1}]"));
                 }
                 {
                     const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
                     DrawPairPtByEta(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots.png",
-                        "dN_{events}/dp_{T} [GeV^{-1}]");
+                        Ttl("dN_{events}/dp_{T} [GeV^{-1}]"));
                 }
                 {
                     const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts");
                     DrawPairPtByEta(
                         hn, L1For(hn, ctr_pct), label_line3_,
                         tag + "_pair_pt_in_eta_subplots_nondifferential.png",
-                        "N_{events}", false);
+                        Ttl("N_{events}"), false);
                 }
             }
 
             output_dir = taa_dir;
             Save2DColz(PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr),
                        tag + "_pair_pt_pair_eta.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#eta} [pb GeV^{-1}]");
+                       Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#eta} [pb GeV^{-1}]"));
             Save2DColz(PtAxisHist("h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr),
                        tag + "_pair_pt_minv.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]");
+                       Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}dm_{#mu#mu}} [pb GeV^{-1} GeV^{-1}]"));
             Save2DColz(PtAxisHist("h2d_crossx_pair_pt_dr_w_signal_cuts_" + ctr),
                        tag + "_pair_pt_dr.png",
-                       "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#DeltaR} [pb GeV^{-1}]");
+                       Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{d^{2}n_{AA}}{dp_{T}d#DeltaR} [pb GeV^{-1}]"));
             {
                 const std::string hn = PtAxisHist("h3d_crossx_dr_vs_pair_eta_vs_pair_pt_w_signal_cuts_" + ctr);
                 DrawPairPtByEtaWithDrLines(
                     hn, L1For(hn, ctr_pct), label_line3_,
                     tag + "_pair_pt_in_eta_subplots_dr_lines.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
+                    Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]"));
             }
             {
                 const std::string hn = PtAxisHist("h2d_op_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr);
                 DrawPairPtByEta(
                     hn, L1For(hn, ctr_pct), label_line3_,
                     tag + "_pair_pt_in_eta_subplots.png",
-                    "#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]");
+                    Ttl("#frac{1}{#LTT_{AA}#GT N_{evt}} #frac{dn_{AA}}{dp_{T}} [pb GeV^{-1}]"));
             }
         }
 
@@ -270,7 +333,11 @@ public:
 // pbpb_<years>_combined_pt_120/, in the SAME invocation as the nominal 9 -> 150 GeV one --
 // refreshing only one of the two is how they drifted apart for months (2026-06-19 to 2026-08-04,
 // back when the 150 view was the opt-in one).
-void plot_single_b_crossx_pbpb(bool also_pt_120 = false)
+//
+// `ss_subtr = true` draws the OS-SS SUBTRACTED version of the same figures from the
+// *_ss_subtr_crossx.root files (RDFBasedHistFillingPbPb ss_subtr_crossx pass, one per year) into
+// pbpb_<years>_combined[_pt_120]_SS_subtr/; the nominal OS-only directories are not touched.
+void plot_single_b_crossx_pbpb(bool also_pt_120 = false, bool ss_subtr = false)
 {
     static const std::string plots_base =
         "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/plots/single_b_analysis/";
@@ -284,7 +351,9 @@ void plot_single_b_crossx_pbpb(bool also_pt_120 = false)
         const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/pbpb_20"
                                  + std::to_string(yr) + "/histograms_real_pairs_pbpb_20"
                                  + std::to_string(yr);
-        std::vector<std::string> candidates = {
+        std::vector<std::string> candidates = ss_subtr
+          ? std::vector<std::string>{base + "_" + trig + "_no_trg_plots_nominal_ss_subtr_crossx.root"}
+          : std::vector<std::string>{
             base + "_" + trig + "_no_trg_plots_nominal.root",
             base + "_" + trig + "_no_trg_plots_coarse_q_eta_bin.root",
             base + "_" + trig + "_coarse_q_eta_bin.root",
@@ -306,11 +375,13 @@ void plot_single_b_crossx_pbpb(bool also_pt_120 = false)
         throw std::runtime_error("plot_single_b_crossx_pbpb: no PbPb input files found.");
 
     SingleBCrossxPlotterPbPbCombined pl(year_paths);  // DEFAULT: pT_bins_150 (9 -> 150 GeV)
+    pl.ss_subtract = ss_subtr;
     pl.Run();
 
     if (also_pt_120) {
         SingleBCrossxPlotterPbPbCombined pl120(year_paths);
         pl120.use_pt_bins_120 = true;                 // OPT-IN: pT_bins_120 (9 -> 120 GeV)
+        pl120.ss_subtract = ss_subtr;
         pl120.Run();
     }
 }

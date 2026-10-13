@@ -1229,24 +1229,11 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
     const auto minv_edges = make_unif_edges(50,  1.0,  3.0);
     const auto dr_edges   = make_unif_edges(50,  0.0, 1.0);
 
-    // Store 3D global histogram as RResultPtr (will be evaluated during HistPostProcess)
-    {
-        // DEFAULT fine pair-pT crossx axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5.
-        // Mirrors RDFBasedHistFillingPP.cxx; see the comment there for why the default lives
-        // on the UNSUFFIXED (complete) family rather than on added _pt_150 twins.
-        const int     npt    = (int)(pms.pT_bins_150.size() - 1);
-        const double* ptbins = pms.pT_bins_150.data();
-        hist3d_rresultptr_map["h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_single_b_crossx_weighted.Histo3D(
-            ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
-                npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
-            "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
-
-        // --- Same-sign (SS) signal-region 3D yield, for the OS-SS combinatorial
-        // subtraction in R_AA (analysis_overview.md §4a). Mirrors the OS path with
-        // identical cuts and corrected weight (weight_for_RAA · w_reco · w_trig).
-        // SS muons are real reco'd muons, so the same per-muon efficiency weights apply.
-        ROOT::RDF::RNode df_ss_crossx = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss").Filter(signal_cuts);
-        ROOT::RDF::RNode df_ss_weighted = df_ss_crossx
+    // Same-sign twin of the OS weight chain above (df_with_trig .. weight_for_RAA_trig_corr): SS muons
+    // are real reco'd muons, so the identical per-muon trigger efficiency (OR logic) and the pair
+    // reco-efficiency placeholder apply. Shared by the R_AA 3D below and the OS-SS subtraction pass.
+    auto attach_ss_corr_weights = [this](ROOT::RDF::RNode df_ss_sel) -> ROOT::RDF::RNode {
+        return df_ss_sel
             .Define("q_eta1", "(float)(m1.charge * m1.eta)")
             .Define("q_eta2", "(float)(m2.charge * m2.eta)")
             .Define("ctr_suf", [](int ctr) { return RDFBasedHistFillingData::FindCtrSuffix(ctr); }, {"avg_centrality"})
@@ -1264,6 +1251,80 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
                 [this](int avg_centrality, double weight) { return this->CalculateWeightForRAA(avg_centrality, weight); },
                 {"avg_centrality", "weight"})
             .Define("weight_for_RAA_trig_corr", "weight_for_RAA * w_reco * w_trig");
+    };
+
+    // --- OS-SS SUBTRACTION pass (ss_subtr_crossx) ---------------------------------------------
+    // Books the OS histograms of the combined crossx plotter's TAA-weighted + counts families under
+    // their NOMINAL names, and an SS twin of each ("h2d_ss_..." / "h3d_ss_...": "ss_" inserted after
+    // the dimensionality token) from df_ss with the IDENTICAL signal cuts, centrality filter, binning
+    // and weight chain (attach_ss_corr_weights == the OS chain). The plotter draws OS - SS from these
+    // (SingleBCrossxPlotterPbPbCombined, ss_subtract). Distinct output file (_ss_subtr_crossx), so the
+    // nominal crossx histograms and plots are untouched. Both pair-pT axes (pT_bins_150 nominal,
+    // pT_bins_120 opt-in) with the same observable coverage as the nominal OS families.
+    if (ss_subtr_crossx) {
+        ROOT::RDF::RNode df_ss_w_all = attach_ss_corr_weights(
+            map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (OS-SS subtraction)").Filter(signal_cuts));
+        const auto eta_edges_s = eta_edges; // nominal and 120 views share the eta/dR axes
+        for (int ictr = 0; ictr < nCtrBins; ++ictr) {
+            const std::string ctr = "ctr" + std::to_string(ctr_bin_edges.at(ictr)) + "_" + std::to_string(ctr_bin_edges.at(ictr + 1));
+            const std::string ctr_filter = "avg_centrality >= " + std::to_string(ctr_bin_edges.at(ictr))
+                                         + " && avg_centrality < " + std::to_string(ctr_bin_edges.at(ictr + 1));
+            ROOT::RDF::RNode df_sel[2] = {df_single_b_crossx_weighted.Filter(ctr_filter), df_ss_w_all.Filter(ctr_filter)};
+            const char* sign_tok[2]  = {"", "ss_"};           // inserted after "h2d_"/"h3d_"
+            const char* eta_name[2]  = {"op_", "ss_"};        // eta-vs-pT 2D already carries "op_"
+            struct PtAxis { std::string tag; const double* edges; int n; bool full; };
+            const PtAxis axes[2] = {
+                {"pair_pt", pms.pT_bins_150.data(), (int)(pms.pT_bins_150.size() - 1), true},   // nominal
+                {"pt_120",  pms.pT_bins_120.data(), (int)(pms.pT_bins_120.size() - 1), false},  // opt-in (partial family)
+            };
+            for (int is = 0; is < 2; ++is) {
+                for (const auto& ax : axes) {
+                    for (const bool counts : {false, true}) {
+                        const char* w = counts ? "weight" : "weight_for_RAA_trig_corr";
+                        const std::string cs = counts ? "_counts" : "";
+                        const std::string h2e = std::string("h2d_") + eta_name[is] + "crossx_w_signal_cuts_vs_pair_eta_vs_" + ax.tag + "_" + ctr + cs;
+                        hist2d_rresultptr_map[h2e] = df_sel[is].Histo2D(
+                            ROOT::RDF::TH2DModel(h2e.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair}", ax.n, ax.edges, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+                            "pair_pt", "pair_eta", w);
+                        const std::string h3d = std::string("h3d_") + sign_tok[is] + "crossx_dr_vs_pair_eta_vs_" + (ax.full ? "pair_pt" : "pt_120") + "_w_signal_cuts_" + ctr + cs;
+                        hist3d_rresultptr_map[h3d] = df_sel[is].Histo3D(
+                            ROOT::RDF::TH3DModel(h3d.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};#DeltaR", ax.n, ax.edges, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges_s.data(), 50, dr_edges.data()),
+                            "pair_pt", "pair_eta", "dr", w);
+                        if (!ax.full) continue; // minv / dR 2Ds exist for the nominal axis only (as in nominal)
+                        const std::string h2m = std::string("h2d_") + sign_tok[is] + "crossx_pair_pt_minv_w_signal_cuts_" + ctr + cs;
+                        hist2d_rresultptr_map[h2m] = df_sel[is].Histo2D(
+                            ROOT::RDF::TH2DModel(h2m.c_str(), ";p_{T}^{pair} [GeV];m_{#mu#mu} [GeV]", ax.n, ax.edges, 50, 1.0, 3.0),
+                            "pair_pt", "minv", w);
+                        const std::string h2d = std::string("h2d_") + sign_tok[is] + "crossx_pair_pt_dr_w_signal_cuts_" + ctr + cs;
+                        hist2d_rresultptr_map[h2d] = df_sel[is].Histo2D(
+                            ROOT::RDF::TH2DModel(h2d.c_str(), ";p_{T}^{pair} [GeV];#DeltaR", ax.n, ax.edges, 50, 0.0, 1.0),
+                            "pair_pt", "dr", w);
+                    }
+                }
+            }
+        }
+        std::cout << "[PbPb] FillHistogramsCrossx (OS-SS subtraction pass: OS + SS twins, both pT axes) booked" << std::endl;
+        return;
+    }
+
+    // Store 3D global histogram as RResultPtr (will be evaluated during HistPostProcess)
+    {
+        // DEFAULT fine pair-pT crossx axis = pT_bins_150 (16 log bins 9 -> 150 GeV), D5.
+        // Mirrors RDFBasedHistFillingPP.cxx; see the comment there for why the default lives
+        // on the UNSUFFIXED (complete) family rather than on added _pt_150 twins.
+        const int     npt    = (int)(pms.pT_bins_150.size() - 1);
+        const double* ptbins = pms.pT_bins_150.data();
+        hist3d_rresultptr_map["h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_single_b_crossx_weighted.Histo3D(
+            ROOT::RDF::TH3DModel("h3d_op_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
+                npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
+            "pair_pt", "pair_eta", "avg_centrality", "weight_for_RAA_trig_corr");
+
+        // --- Same-sign (SS) signal-region 3D yield, for the OS-SS combinatorial
+        // subtraction in R_AA (analysis_overview.md §4a). Mirrors the OS path with
+        // identical cuts and corrected weight (weight_for_RAA · w_reco · w_trig).
+        // SS muons are real reco'd muons, so the same per-muon efficiency weights apply.
+        ROOT::RDF::RNode df_ss_weighted = attach_ss_corr_weights(
+            map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss").Filter(signal_cuts));
         hist3d_rresultptr_map["h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt"] = df_ss_weighted.Histo3D(
             ROOT::RDF::TH3DModel("h3d_ss_crossx_w_signal_cuts_vs_centr_vs_pair_eta_vs_pair_pt", ";p_{T}^{pair} [GeV];#eta^{pair};Centrality",
                 npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, eta_edges.data(), nCtrBins, ctr_bin_edges_double.data()),
