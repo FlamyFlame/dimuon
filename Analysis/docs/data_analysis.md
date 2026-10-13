@@ -62,7 +62,7 @@ BOTH the derivation and the application so the two cannot drift; every threshold
 | # | `kPbPbEvSelCutLabel` | What is required | Form of the threshold |
 |---|---|---|---|
 | 1 | `ZDC_FCal_banana` | ZDC E_total below the banana curve at that FCal E_T^{A+C} | TGraph `g_ZDC_FCal_cut`, per-0.1-TeV-FCal-slice two-band Gaussian fit: `max(main μ+5σ, pile-up μ_bg−3σ_bg)` |
-| 2 | `ZDC_time` | \|t_A\| < 1.5 ns AND \|t_C\| < 1.5 ns | scalar `ZDC_time_cut_ns` |
+| 2 | `ZDC_time` | a_lo < t_A < a_hi AND c_lo < t_C < c_hi, per year from `PbPbZdcTimeCut()` (`PbPbEventSelConfig.h`): ±1.5 ns default; **2025 t_A > −0.6 ns, 2026 t_A < +0.8 ns** (user 2026-10-12, PROVISIONAL; `docs/tracking/pbpb_zdc_time_cut2_window.md`) | 4 scalars `ZDC_time_{A,C}_{lo,hi}_ns` (read via `PbPbReadZdcTimeWindow`, which throws on a stale file); 2023/24 files: legacy `ZDC_time_cut_ns` |
 | 3 | `ZDC_preamp` | NOT (both sides' preamp sums above threshold) — fails only if A **and** C exceed it | scalars `ZDC_preamp_{A,C}_cut_ADC`; per-run μ+7σ from the optional `t_preamp_per_run` tree where the year's cuts file provides it (2025, 2026) |
 | 4 | `nTrk_frac` | N_trk^HItight / N_trk^total above a lower bound, vs N_trk^total | TGraph `g_ntrk_frac_cut_lo`, per-slice Gaussian μ−5σ |
 | 5 | `nTrk_FCal_band` | N_trk^HItight inside a band vs FCal E_T^{A+C} | TGraphs `g_ntrk_fcal_cut_{lo,hi}`, per-slice Gaussian [μ−5σ, μ+5σ] |

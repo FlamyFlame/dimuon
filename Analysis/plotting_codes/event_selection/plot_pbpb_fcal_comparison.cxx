@@ -100,7 +100,7 @@ static bool YearAvailableFC(int yr, bool is_alt) {
 // ---- Per-year cut container -------------------------------------------------
 struct CutSetFC {
     TGraph* g_cut1    = nullptr;  // ZDC-FCal banana
-    double  t_ns      = 1.5;
+    PbPbZdcTimeWindow t{};        // cut 2 window, per side (PbPbReadZdcTimeWindow)
     double  preamp_A  = 385.;
     double  preamp_C  = 385.;
     TGraph* g_cut4    = nullptr;  // nTrk frac lower bound
@@ -132,15 +132,15 @@ static CutSetFC LoadCutsFC(int yr, bool is_alt) {
         return p->GetVal();
     };
     cs.g_cut1    = loadG(PbPbEvSelKey::kZDCFCalCut);
-    cs.t_ns      = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+    cs.t         = PbPbReadZdcTimeWindow(f, yr);   // throws if missing or != PbPbZdcTimeCut(yr)
     cs.preamp_A  = loadP(PbPbEvSelKey::kPreampACutADC);
     cs.preamp_C  = loadP(PbPbEvSelKey::kPreampCCutADC);
     cs.g_cut4    = loadG(PbPbEvSelKey::kNTrkFracCutLo);
     cs.g_cut5_lo = loadG(PbPbEvSelKey::kNTrkFCalCutLo);
     cs.g_cut5_hi = loadG(PbPbEvSelKey::kNTrkFCalCutHi);
     f->Close();
-    std::cout << Form("Loaded cuts for 20%d (%s): t=%.2f ns  preamp A=%.0f C=%.0f\n",
-                      yr, is_alt ? "alt" : "nominal", cs.t_ns, cs.preamp_A, cs.preamp_C);
+    std::cout << Form("Loaded cuts for 20%d (%s): %.2f<tA<%.2f, %.2f<tC<%.2f ns  preamp A=%.0f C=%.0f\n",
+                      yr, is_alt ? "alt" : "nominal", cs.t.a_lo, cs.t.a_hi, cs.t.c_lo, cs.t.c_hi, cs.preamp_A, cs.preamp_C);
     return cs;
 }
 
@@ -160,7 +160,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
 
     TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
     for (const auto& fpath : it->second)
-        if (!gSystem->AccessPathName(fpath.c_str())) chain.Add(fpath.c_str());
+        if (!gSystem->AccessPathName(fpath.c_str())) chain.Add(PbPbRawInputPath(fpath).c_str());
     // Return nullptr, NOT the empty histogram: a non-null empty hist sails past every
     // `!h` guard downstream and gets normalised (integral 0 -> no scaling) and ratioed,
     // i.e. drawn as if it were data.
@@ -223,7 +223,7 @@ static TH1D* FillFCalHist(int yr, const CutSetFC& cs) {
         const double c1 = PbPbEvSelEvalCut(cs.g_cut1, fcal_AC);
         if (c1 > 0. && zdc_tot > c1) continue;
         // Cut 2: ZDC time box
-        if (std::fabs(tA) >= (float)cs.t_ns || std::fabs(tC) >= (float)cs.t_ns) continue;
+        if (!PbPbPassZdcTime(cs.t, tA, tC)) continue;
         // Cut 3: ZDC preamp — fail only if both sides exceed threshold
         if (pA >= (float)cs.preamp_A && pC >= (float)cs.preamp_C) continue;
         // Cuts 4 & 5: track-based — skip events with no tracks (consistent with cuts plotter)

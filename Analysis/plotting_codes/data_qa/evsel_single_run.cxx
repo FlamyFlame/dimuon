@@ -64,7 +64,7 @@ const char* kViewName[kNView] = {"zdc_fcal", "zdc_time", "preamp_AC", "ntrk_frac
 
 struct Cuts {
     TGraph *c1 = nullptr, *c4 = nullptr, *c5lo = nullptr, *c5hi = nullptr;
-    double c2_ns = 0.; float c3A = 0.f, c3C = 0.f;
+    PbPbZdcTimeWindow c2{}; float c3A = 0.f, c3C = 0.f;
     std::map<int, std::pair<float,float>> c3_per_run;
     std::pair<float,float> Cut3(int run) const {
         auto it = c3_per_run.find(run);
@@ -80,7 +80,7 @@ inline Cuts LoadCuts(int yr) {
     auto g = [&](const char* k) { auto* o = (TGraph*)f->Get(k); if (!o) throw std::runtime_error(std::string("missing ") + k); return (TGraph*)o->Clone(); };
     auto p = [&](const char* k) { auto* o = (TParameter<double>*)f->Get(k); if (!o) throw std::runtime_error(std::string("missing ") + k); return o->GetVal(); };
     Cuts c;
-    c.c1 = g(PbPbEvSelKey::kZDCFCalCut);  c.c2_ns = p(PbPbEvSelKey::kZDCTimeCutNs);
+    c.c1 = g(PbPbEvSelKey::kZDCFCalCut);  c.c2 = PbPbReadZdcTimeWindow(f, yr);
     c.c3A = (float)p(PbPbEvSelKey::kPreampACutADC); c.c3C = (float)p(PbPbEvSelKey::kPreampCCutADC);
     c.c4 = g(PbPbEvSelKey::kNTrkFracCutLo);
     c.c5lo = g(PbPbEvSelKey::kNTrkFCalCutLo); c.c5hi = g(PbPbEvSelKey::kNTrkFCalCutHi);
@@ -166,7 +166,7 @@ void evsel_single_run_fill(int yr, const std::string& infile, const std::string&
             fillv(kZdcFcal);
             if (ztot > (float)PbPbEvSelEvalCut(cuts.c1, fcal)) break;                                  stage = 1;
             fillv(kZdcTime);
-            if (std::abs(tA) >= (float)cuts.c2_ns || std::abs(tC) >= (float)cuts.c2_ns) break;         stage = 2;
+            if (!PbPbPassZdcTime(cuts.c2, tA, tC)) break;                                              stage = 2;
             fillv(kPreampAC);
             const auto c3 = cuts.Cut3((int)run);
             if (pA >= c3.first && pC >= c3.second) break;                                              stage = 3;
@@ -258,9 +258,10 @@ void evsel_single_run_plot(int yr, const std::string& merged, std::vector<int> r
             auto drawg = [](TGraph* g) { auto* d = (TGraph*)g->Clone(); d->SetLineColor(kRed); d->SetLineWidth(2); d->Draw("L SAME"); };
             if (v == kZdcFcal) { drawg(cuts.c1); tl.DrawLatex(0.15, 0.80, "ZDC-FCal cut (year)"); }
             else if (v == kZdcTime) {
-                TLine l; l.SetLineColor(kRed); l.SetLineWidth(2); l.SetLineStyle(2); const double t = cuts.c2_ns;
-                l.DrawLine(-t, -t, -t, t); l.DrawLine(t, -t, t, t); l.DrawLine(-t, -t, t, -t); l.DrawLine(-t, t, t, t);
-                tl.DrawLatex(0.15, 0.80, Form("|t^{A}|, |t^{C}| < %.1f ns", t));
+                TLine l; l.SetLineColor(kRed); l.SetLineWidth(2); l.SetLineStyle(2); const auto& w = cuts.c2;
+                l.DrawLine(w.a_lo, w.c_lo, w.a_lo, w.c_hi); l.DrawLine(w.a_hi, w.c_lo, w.a_hi, w.c_hi);
+                l.DrawLine(w.a_lo, w.c_lo, w.a_hi, w.c_lo); l.DrawLine(w.a_lo, w.c_hi, w.a_hi, w.c_hi);
+                tl.DrawLatex(0.15, 0.80, Form("%.1f < t^{A} < %.1f ns, %.1f < t^{C} < %.1f ns", w.a_lo, w.a_hi, w.c_lo, w.c_hi));
             }
             else if (v == kFrac) { drawg(cuts.c4); tl.DrawLatex(0.15, 0.80, "N_{trk} fraction lower cut (year)"); }
             else if (v == kNtrkFcal) { drawg(cuts.c5lo); drawg(cuts.c5hi); tl.DrawLatex(0.15, 0.80, "N_{trk}-FCal band (year)"); }

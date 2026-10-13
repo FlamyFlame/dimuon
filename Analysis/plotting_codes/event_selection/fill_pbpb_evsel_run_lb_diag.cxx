@@ -5,7 +5,7 @@
 // Event reading and cuts 1-5 mirror the analysis application PbPbExtras::PassEventSel exactly
 // (same cuts file, same per-run preamp tree, same strict/non-strict inequalities, same units):
 //   cut 1  zdc_tot = (E_A+E_C)/1000 TeV  >  g_ZDC_FCal_cut(FCal)        -> fail
-//   cut 2  |t_A| >= cut2_ns || |t_C| >= cut2_ns                         -> fail
+//   cut 2  outside the per-side window PbPbZdcTimeCut(yr)                -> fail
 //   cut 3  preamp_A >= cut_A && preamp_C >= cut_C (per-run if present)  -> fail
 //   cut 4  N_trk^HItight/N_trk^total < g_ntrk_frac_cut_lo(N_trk^total) -> fail (N_trk^total>0)
 //   cut 5  N_trk^HItight outside [g_ntrk_fcal_cut_lo, _hi](FCal)       -> fail
@@ -68,7 +68,7 @@ void fill_pbpb_evsel_run_lb_diag(int run_year, int part, std::vector<int> lbscan
     TGraph* g4   = get_graph(PbPbEvSelKey::kNTrkFracCutLo);
     TGraph* g5lo = get_graph(PbPbEvSelKey::kNTrkFCalCutLo);
     TGraph* g5hi = get_graph(PbPbEvSelKey::kNTrkFCalCutHi);
-    const double cut2_ns = get_param(PbPbEvSelKey::kZDCTimeCutNs);
+    const PbPbZdcTimeWindow cut2 = PbPbReadZdcTimeWindow(fc, run_year);   // per-side window, checked vs PbPbZdcTimeCut
     const float  cut3_A0 = (float)get_param(PbPbEvSelKey::kPreampACutADC);
     const float  cut3_C0 = (float)get_param(PbPbEvSelKey::kPreampCCutADC);
     std::map<int, std::pair<float, float>> cut3_run;
@@ -77,7 +77,7 @@ void fill_pbpb_evsel_run_lb_diag(int run_year, int part, std::vector<int> lbscan
         t->SetBranchAddress("run_number", &r); t->SetBranchAddress("cut_A_ADC", &a); t->SetBranchAddress("cut_C_ADC", &c);
         for (Long64_t i = 0; i < t->GetEntries(); ++i) { t->GetEntry(i); cut3_run[r] = {(float)a, (float)c}; }
     }
-    std::cout << "cuts: " << cuts_path << "  cut2 " << cut2_ns << " ns, cut3 scalar " << cut3_A0 << "/" << cut3_C0
+    std::cout << "cuts: " << cuts_path << "  cut2 tA (" << cut2.a_lo << "," << cut2.a_hi << ") tC (" << cut2.c_lo << "," << cut2.c_hi << ") ns, cut3 scalar " << cut3_A0 << "/" << cut3_C0
               << ", per-run preamp cuts for " << cut3_run.size() << " runs" << std::endl;
     const std::unordered_set<int> bad_runs = PbPbBadRuns(run_year);
 
@@ -165,7 +165,7 @@ void fill_pbpb_evsel_run_lb_diag(int run_year, int part, std::vector<int> lbscan
         float c3A = cut3_A0, c3C = cut3_C0;
         if (auto it = cut3_run.find(r); it != cut3_run.end()) { c3A = it->second.first; c3C = it->second.second; }
         const bool p1 = !(zdc > (float)PbPbEvSelEvalCut(g1, fcal));
-        const bool p2 = std::abs(tA) < (float)cut2_ns && std::abs(tC) < (float)cut2_ns;
+        const bool p2 = PbPbPassZdcTime(cut2, tA, tC);
         const bool p3 = !(pA >= c3A && pC >= c3C);
         const double frac = ntot > 0 ? (double)ntight / ntot : -1.;
         const bool p4 = has_trk && !(ntot > 0 && frac < PbPbEvSelEvalCut(g4, ntot));

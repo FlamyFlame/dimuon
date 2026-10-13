@@ -132,7 +132,7 @@ static YearResult ProcessYear(int yr) {
         return p->GetVal();
     };
     TGraph* g_cut1  = loadG(PbPbEvSelKey::kZDCFCalCut);
-    double cut2_ns  = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+    const PbPbZdcTimeWindow cut2 = PbPbReadZdcTimeWindow(fc, yr);
     double cut_A    = loadP(PbPbEvSelKey::kPreampACutADC);
     double cut_C    = loadP(PbPbEvSelKey::kPreampCCutADC);
     fc->Close();
@@ -188,8 +188,7 @@ static YearResult ProcessYear(int yr) {
         const float fcal_AC = (FCal_P + FCal_N) * 1e-6f;
         const float zdcTot  = (zdcE[0] + zdcE[1]) / 1000.f;
         if (zdcTot > (float)PbPbEvSelEvalCut(g_cut1, fcal_AC)) continue; // Cut1
-        if (std::abs(zdcT[1]) >= (float)cut2_ns) continue;               // Cut2 A  [1]=A
-        if (std::abs(zdcT[0]) >= (float)cut2_ns) continue;               // Cut2 C  [0]=C
+        if (!PbPbPassZdcTime(cut2, zdcT[1], zdcT[0])) continue;         // Cut2 ([1]=A, [0]=C)
         sumA += zdcAmp[1];   // [1] = side A
         sumC += zdcAmp[0];   // [0] = side C
         ++n_sel;

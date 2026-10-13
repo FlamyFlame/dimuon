@@ -54,7 +54,7 @@ protected:
 
     // Loaded by InitEventSel() from event_sel_cuts_pbpb_20YY.root
     TGraph* g_evsel_cut1_{nullptr};       // ZDC-FCal banana upper bound
-    double  evsel_cut2_ns_{1.8};          // ZDC time window [ns]
+    PbPbZdcTimeWindow evsel_cut2_{};      // ZDC time window per side [ns] (PbPbReadZdcTimeWindow)
     float   evsel_cut3_A_{385.f};         // ZDC preamp A upper cut [ADC] (scalar fallback / 23+24)
     float   evsel_cut3_C_{385.f};         // ZDC preamp C upper cut [ADC] (scalar fallback / 23+24)
     // PbPb25 only: per-run mu+7sigma preamp cuts, keyed by run number

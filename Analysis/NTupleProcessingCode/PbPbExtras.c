@@ -160,7 +160,7 @@ void PbPbExtras<Derived>::InitEventSel() {
   };
 
   g_evsel_cut1_    = get_graph(PbPbEvSelKey::kZDCFCalCut);
-  evsel_cut2_ns_   = get_param(PbPbEvSelKey::kZDCTimeCutNs);
+  evsel_cut2_      = PbPbReadZdcTimeWindow(f, self().run_year);   // throws if missing or != PbPbZdcTimeCut(yr)
   evsel_cut3_A_    = (float)get_param(PbPbEvSelKey::kPreampACutADC);
   evsel_cut3_C_    = (float)get_param(PbPbEvSelKey::kPreampCCutADC);
   g_evsel_cut4_    = get_graph(PbPbEvSelKey::kNTrkFracCutLo);
@@ -222,8 +222,7 @@ bool PbPbExtras<Derived>::PassEventSel() const {
   if (zdc_tot > (float)PbPbEvSelEvalCut(g_evsel_cut1_, fcal_AC)) return false;
 
   // Cut 2: ZDC time box
-  if (std::abs(zdc_ZdcTime[1]) >= (float)evsel_cut2_ns_) return false;  // [1]=A
-  if (std::abs(zdc_ZdcTime[0]) >= (float)evsel_cut2_ns_) return false;  // [0]=C
+  if (!PbPbPassZdcTime(evsel_cut2_, zdc_ZdcTime[1], zdc_ZdcTime[0])) return false;  // [1]=A, [0]=C
 
   // Cut 3: ZDC preamp amplitude (per-run mu+7sigma where the year's cuts file provides
   // them -- currently PbPb25; hard scalar cut otherwise)

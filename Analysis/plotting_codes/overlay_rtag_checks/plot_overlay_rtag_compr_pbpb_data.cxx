@@ -151,7 +151,7 @@ namespace {
     // ---- the 5 event-selection cuts of this year -----------------------------------------------
     struct CutSet {
         TGraph* g_cut1 = nullptr;   // ZDC-FCal banana
-        double  t_ns = 0.;
+        PbPbZdcTimeWindow t{};   // cut 2, per side
         double  preamp_A = 0., preamp_C = 0.;
         TGraph* g_cut4 = nullptr;                      // nTrk HITight-fraction lower bound
         TGraph* g_cut5_lo = nullptr, *g_cut5_hi = nullptr;  // nTrk-FCal band
@@ -174,14 +174,14 @@ namespace {
         };
         CutSet cs;
         cs.g_cut1    = loadG(PbPbEvSelKey::kZDCFCalCut);
-        cs.t_ns      = loadP(PbPbEvSelKey::kZDCTimeCutNs);
+        cs.t         = PbPbReadZdcTimeWindow(f, yr);
         cs.preamp_A  = loadP(PbPbEvSelKey::kPreampACutADC);
         cs.preamp_C  = loadP(PbPbEvSelKey::kPreampCCutADC);
         cs.g_cut4    = loadG(PbPbEvSelKey::kNTrkFracCutLo);
         cs.g_cut5_lo = loadG(PbPbEvSelKey::kNTrkFCalCutLo);
         cs.g_cut5_hi = loadG(PbPbEvSelKey::kNTrkFCalCutHi);
         f->Close();
-        std::printf("Pb+Pb 20%d cuts: t = %.2f ns, preamp A = %.0f, C = %.0f ADC\n", yr, cs.t_ns, cs.preamp_A, cs.preamp_C);
+        std::printf("Pb+Pb 20%d cuts: %.2f < tA < %.2f, %.2f < tC < %.2f ns, preamp A = %.0f, C = %.0f ADC\n", yr, cs.t.a_lo, cs.t.a_hi, cs.t.c_lo, cs.t.c_hi, cs.preamp_A, cs.preamp_C);
         return cs;
     }
 }
@@ -260,7 +260,7 @@ void fill_data(Long64_t max_per_year = -1, int yr_sel = -1, int part_sel = -1) {
             const double c1 = PbPbEvSelEvalCut(cs.g_cut1, fcal_AC);
             if (c1 > 0. && zdc_tot > c1) continue;
             // Cut 2: ZDC time box
-            if (std::fabs(tA) >= (float)cs.t_ns || std::fabs(tC) >= (float)cs.t_ns) continue;
+            if (!PbPbPassZdcTime(cs.t, tA, tC)) continue;
             // Cut 3: ZDC preamp -- fail only if BOTH sides exceed the threshold
             if (pA >= (float)cs.preamp_A && pC >= (float)cs.preamp_C) continue;
             // Cuts 4 & 5 are track-based: an event with no track cannot be judged

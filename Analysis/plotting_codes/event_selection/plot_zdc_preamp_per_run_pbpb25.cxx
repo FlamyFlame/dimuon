@@ -279,7 +279,7 @@ void plot_zdc_preamp_per_run_pbpb25() {
     TFile* fc = TFile::Open(cpath.c_str(), "READ");
     if (!fc || fc->IsZombie()) throw std::runtime_error("Cuts file not found: " + cpath);
     TGraph* g_cut1 = (TGraph*)((TGraph*)fc->Get(PbPbEvSelKey::kZDCFCalCut))->Clone();
-    double cut2_ns = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kZDCTimeCutNs))->GetVal();
+    const PbPbZdcTimeWindow cut2 = PbPbReadZdcTimeWindow(fc, 25);
     double cut_A   = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampACutADC))->GetVal();
     double cut_C   = ((TParameter<double>*)fc->Get(PbPbEvSelKey::kPreampCCutADC))->GetVal();
     fc->Close();
@@ -322,8 +322,7 @@ void plot_zdc_preamp_per_run_pbpb25() {
         const float fcal_AC = (FCal_P + FCal_N) * 1e-6f;
         const float zdcTot  = (zdcE[0] + zdcE[1]) / 1000.f;
         if (zdcTot > (float)PbPbEvSelEvalCut(g_cut1, fcal_AC)) continue;
-        if (std::abs(zdcT[1]) >= (float)cut2_ns) continue;
-        if (std::abs(zdcT[0]) >= (float)cut2_ns) continue;
+        if (!PbPbPassZdcTime(cut2, zdcT[1], zdcT[0])) continue;   // [1]=A, [0]=C
         const int run = b_RunNum;
         if (hA_map.find(run) == hA_map.end()) {
             hA_map[run] = new TH1D(Form("hA_%d", run), "", 198, -1000., 2960.);

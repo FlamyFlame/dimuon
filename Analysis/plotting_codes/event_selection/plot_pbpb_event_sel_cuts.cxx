@@ -1,7 +1,7 @@
 // plot_pbpb_event_sel_cuts.cxx
 // Sequential 5-cut event selection pipeline for PbPb data.
 //   Cut 1: ZDC vs FCal banana (loaded from event_sel_cuts_pbpb_YYYY.root)
-//   Cut 2: ZDC time |tA| < 1.5 ns AND |tC| < 1.5 ns
+//   Cut 2: ZDC time window per year/side, PbPbZdcTimeCut() (default |tA|,|tC| < 1.5 ns)
 //   Cut 3: ZDC preamp sum: fail only if BOTH A and C exceed threshold (hard cut per year; per-run mu+7sigma for 2025/2026)
 //   Cut 4: nTrk HItight fraction vs total nTrk — lower bound at mu-5sigma (per-slice Gauss)
 //   Cut 5: nTrk HItight vs FCal ET — band [mu-5sigma, mu+5sigma] (per-slice Gauss)
@@ -10,6 +10,7 @@
 // Output per cut: standalone canvas, 5-panel pass canvas, 5-panel fail canvas.
 // Additionally: 5-panel no-cuts canvas, per-cut survival rate plot (centrality 0-79).
 //
+//   Cut 2 window per year/side from PbPbZdcTimeCut() (2025: t^A > -0.6 ns, 2026: t^A < 0.8 ns, 2026-10-12)
 // Usage:
 //   .L plot_pbpb_event_sel_cuts.cxx+
 //   plot_pbpb_event_sel_cuts(24)   // run_year = 23, 24, 25 or 26
@@ -45,7 +46,7 @@
 #include "PbPbCentralityFCalMirror.h"
 
 // ---- Cut tuning -------------------------------------------------------------
-static const double CUT2_T_NS_ALT    = 1.5;    // ZDC time window [ns]
+// Cut 2 (ZDC time window) is per year and per side: PbPbZdcTimeCut() in PbPbEventSelConfig.h (single source).
 // Per-year ZDC preamp upper cut [ADC] — evaluate from Gaussian-to-tail turnover in 1D preamp histogram.
 // Values are {side_A, side_C}.
 static std::pair<float,float> GetPreampCuts(int yr) {
@@ -228,6 +229,7 @@ public:
         gSystem->mkdir(out_dir_.c_str(), true);
         bad_runs_ = PbPbBadRuns(run_year_);
         bad_lbs_  = PbPbBadLBRanges(run_year_);
+        cut2_     = PbPbZdcTimeCut(run_year_);
         if (!bad_runs_.empty() || !bad_lbs_.empty())
             std::cout << "Excluding " << bad_runs_.size() << " bad run(s) and "
                       << bad_lbs_.size() << " bad-LB range(s) from PbPb 20" << yr_ << std::endl;
@@ -250,6 +252,7 @@ private:
     float cut3_preamp_C_ = 385.f;
     std::unordered_set<int> bad_runs_;
     std::vector<PbPbBadLBRange> bad_lbs_;
+    PbPbZdcTimeWindow cut2_{};   // cut 2, per side (PbPbZdcTimeCut)
 
     TH2D*   hh_[kNStages_A][kNHTypes_A] = {};
     TH2D*   h_zdctime_ctr_[6] = {};   // ZDC time AC corr: [0-4] = top 1-5%, [5] = 5-10%
@@ -352,7 +355,7 @@ private:
 
         TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
         for (const auto& f : infiles_) {
-            if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
+            if (!gSystem->AccessPathName(f.c_str())) chain.Add(PbPbRawInputPath(f).c_str());
         }
         chain.SetMakeClass(1);
         chain.SetBranchStatus("*", 0);
@@ -393,8 +396,7 @@ private:
             const float fcal_AC = (FCal_Et_P + FCal_Et_N) * 1e-6f;
             const float zdc_tot = (zdc_E[0] + zdc_E[1]) / 1000.f;
             if (zdc_tot > (float)PbPbEvSelEvalCut(g_cut1_, fcal_AC)) continue;  // Cut 1
-            if (std::abs(zdc_t[1]) >= CUT2_T_NS_ALT) continue;                 // Cut 2 A
-            if (std::abs(zdc_t[0]) >= CUT2_T_NS_ALT) continue;                 // Cut 2 C
+            if (!PbPbPassZdcTime(cut2_, zdc_t[1], zdc_t[0])) continue;         // Cut 2 ([1]=A, [0]=C)
             ++n_sel;
 
             if (hA_map.find(run_num) == hA_map.end()) {
@@ -471,7 +473,7 @@ private:
             if (gSystem->AccessPathName(f.c_str())) {
                 std::cerr << "File not found (skipping): " << f << std::endl; continue;
             }
-            chain.Add(f.c_str());
+            chain.Add(PbPbRawInputPath(f).c_str());
         }
         if (chain.GetEntries() == 0)
             throw std::runtime_error("TChain empty for PbPb 20" + yr_);
@@ -565,7 +567,7 @@ private:
             if (!pass_c1) continue;
 
             // Cut 2: ZDC time box
-            const bool pass_c2 = (std::abs(ev.tA) < CUT2_T_NS_ALT && std::abs(ev.tC) < CUT2_T_NS_ALT);
+            const bool pass_c2 = PbPbPassZdcTime(cut2_, ev.tA, ev.tC);
             FillOneStage(pass_c2 ? kC2Pass_A : kC2Fail_A, ev);
             if (is_ctr80) ++n_ctr80_[pass_c2 ? kC2Pass_A : kC2Fail_A];
             if (!pass_c2) continue;
@@ -712,7 +714,7 @@ private:
             wobj(g_cut5_lo_->Clone(PbPbEvSelKey::kNTrkFCalCutLo), PbPbEvSelKey::kNTrkFCalCutLo);
             wobj(g_cut5_hi_->Clone(PbPbEvSelKey::kNTrkFCalCutHi), PbPbEvSelKey::kNTrkFCalCutHi);
         }
-        TParameter<double> p1(PbPbEvSelKey::kZDCTimeCutNs,  CUT2_T_NS_ALT);   p1.Write(PbPbEvSelKey::kZDCTimeCutNs,  TObject::kOverwrite);
+        PbPbWriteZdcTimeWindow(f, cut2_);   // 4 edges; removes the legacy symmetric key (alt file is UPDATE)
         TParameter<double> p2(PbPbEvSelKey::kPreampACutADC, cut3_preamp_A_);   p2.Write(PbPbEvSelKey::kPreampACutADC, TObject::kOverwrite);
         TParameter<double> p3(PbPbEvSelKey::kPreampCCutADC, cut3_preamp_C_);   p3.Write(PbPbEvSelKey::kPreampCCutADC, TObject::kOverwrite);
         TParameter<double> p4("nTrk_frac_n_sigma",      CUT4_N_SIGMA_ALT);     p4.Write("nTrk_frac_n_sigma",          TObject::kOverwrite);
@@ -905,12 +907,12 @@ private:
             tl.DrawLatex(0.15, 0.82, "red: ZDC banana cut (#mu+5#sigma)");
         } else if (cut_idx == 2) {
             TLine l; l.SetLineColor(kRed); l.SetLineWidth(2); l.SetLineStyle(2);
-            l.DrawLine(-CUT2_T_NS_ALT, -10., -CUT2_T_NS_ALT, 10.);
-            l.DrawLine( CUT2_T_NS_ALT, -10.,  CUT2_T_NS_ALT, 10.);
-            l.DrawLine(-10., -CUT2_T_NS_ALT, 10., -CUT2_T_NS_ALT);
-            l.DrawLine(-10.,  CUT2_T_NS_ALT, 10.,  CUT2_T_NS_ALT);
-            tl.DrawLatex(0.15, 0.82, Form("red: |t^{A}| < %.1f ns, |t^{C}| < %.1f ns",
-                                          CUT2_T_NS_ALT, CUT2_T_NS_ALT));
+            l.DrawLine(cut2_.a_lo, -10., cut2_.a_lo, 10.);
+            l.DrawLine(cut2_.a_hi, -10., cut2_.a_hi, 10.);
+            l.DrawLine(-10., cut2_.c_lo, 10., cut2_.c_lo);
+            l.DrawLine(-10., cut2_.c_hi, 10., cut2_.c_hi);
+            tl.DrawLatex(0.15, 0.82, Form("red: %.1f < t^{A} < %.1f ns, %.1f < t^{C} < %.1f ns",
+                                          cut2_.a_lo, cut2_.a_hi, cut2_.c_lo, cut2_.c_hi));
         } else if (cut_idx == 4 && g_cut4_) {
             TGraph* gd = (TGraph*)g_cut4_->Clone("__alt_gc4");
             gd->SetLineColor(kRed); gd->SetLineWidth(2);
@@ -1047,10 +1049,10 @@ private:
 
             // Time-box cut lines
             TLine l; l.SetLineColor(kRed); l.SetLineWidth(2); l.SetLineStyle(2);
-            l.DrawLine(-CUT2_T_NS_ALT, -10., -CUT2_T_NS_ALT, 10.);
-            l.DrawLine( CUT2_T_NS_ALT, -10.,  CUT2_T_NS_ALT, 10.);
-            l.DrawLine(-10., -CUT2_T_NS_ALT, 10., -CUT2_T_NS_ALT);
-            l.DrawLine(-10.,  CUT2_T_NS_ALT, 10.,  CUT2_T_NS_ALT);
+            l.DrawLine(cut2_.a_lo, -10., cut2_.a_lo, 10.);
+            l.DrawLine(cut2_.a_hi, -10., cut2_.a_hi, 10.);
+            l.DrawLine(-10., cut2_.c_lo, 10., cut2_.c_lo);
+            l.DrawLine(-10., cut2_.c_hi, 10., cut2_.c_hi);
 
             TLatex tl; tl.SetNDC(); tl.SetTextSize(0.044);
             tl.DrawLatex(0.17, 0.89, Form("Pb+Pb 20%s  ctr %s (FCal)", yr_.c_str(), ctr_labels[k]));

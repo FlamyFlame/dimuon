@@ -223,7 +223,7 @@ private:
                 std::cerr << "File not found (skipping): " << f << std::endl;
                 continue;
             }
-            chain.Add(f.c_str());
+            chain.Add(PbPbRawInputPath(f).c_str());
         }
         if (chain.GetEntries() == 0)
             throw std::runtime_error("TChain is empty for run year 20" + yr_);
@@ -1169,7 +1169,7 @@ private:
         // Event loop
         TChain chain("HeavyIonD3PD", "HeavyIonD3PD");
         for (const auto& f : infiles_) {
-            if (!gSystem->AccessPathName(f.c_str())) chain.Add(f.c_str());
+            if (!gSystem->AccessPathName(f.c_str())) chain.Add(PbPbRawInputPath(f).c_str());
         }
         chain.SetMakeClass(1);
         chain.SetBranchStatus("*", 0);
