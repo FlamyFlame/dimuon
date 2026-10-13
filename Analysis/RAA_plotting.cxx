@@ -531,7 +531,7 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 		const double ylo = (ymin_draw < 0.) ? -0.3 * yhi : 0.;  // show negative OS-SS fluctuations when present
 		// All labels go in a HEADER STRIP above the panel grid, outside every data frame: off-scale
 		// points and large high-pT error bars can land in any panel corner (review-plot 2026-10-13).
-		const double kHeadFrac = 0.10;
+		const double kHeadFrac = 0.13;
 		TCanvas* c = new TCanvas(Form("c_raa_pt_eta_%zu", ic), "", 450 * ncol, (int)(350 * nrow / (1. - kHeadFrac)));
 		c->cd();
 		TPad* head = new TPad(Form("head_%zu", ic), "", 0., 1. - kHeadFrac, 1., 1.);
@@ -540,12 +540,13 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 		head->cd();
 		{
 			TLatex a; a.SetNDC();
-			a.SetTextFont(72); a.SetTextSize(0.30); a.DrawLatex(0.02, 0.55, "ATLAS");
-			a.SetTextFont(42); a.DrawLatex(0.105, 0.55, "Internal");
-			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.24);
-			t.DrawLatex(0.25, 0.58, Form("%s, centrality %d-%d%%;  %s", legend_pbpb_label.c_str(), clo, chi, legend_pp_label.c_str()));
-			t.DrawLatex(0.25, 0.20, Form("m_{#mu#mu}#in(1.08,2.9) GeV, p_{T}^{pair}>%g GeV;  opposite sign #minus same sign, tight WP;  reco-eff + T_{AA}: PLACEHOLDERS",
+			a.SetTextFont(72); a.SetTextSize(0.24); a.DrawLatex(0.02, 0.62, "ATLAS");
+			a.SetTextFont(42); a.DrawLatex(0.095, 0.62, "Internal");
+			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.17);
+			t.DrawLatex(0.24, 0.70, Form("%s, centrality %d-%d%%;   %s", legend_pbpb_label.c_str(), clo, chi, legend_pp_label.c_str()));
+			t.DrawLatex(0.24, 0.42, Form("m_{#mu#mu} #in (1.08, 2.9) GeV,  p_{T}^{pair} > %g GeV,  opposite sign #minus same sign,  tight WP",
 			                             ParamsSet::signal_pair_pt_min));
+			t.DrawLatex(0.24, 0.14, "reco-eff + T_{AA}: PLACEHOLDERS");
 		}
 		grid->Divide(ncol, nrow);
 		for (int ip = 0; ip < npan; ++ip){
