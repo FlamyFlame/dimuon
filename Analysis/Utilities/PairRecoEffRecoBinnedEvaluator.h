@@ -69,7 +69,8 @@ inline const char* Value() {
 // MC-only and the SF-corrected products can never be swapped silently.
 inline const char* ValueSF() {
     return "eps^{reco,SF}_j = sum_{R_j} w*SF_1*SF_2 / N[T_j] (SF_i = m_i.eff_sf_<wp>, skim MuonEfficiencyScaleFactors; "
-           "unavailable SF -> 1), j = (pair pT, eta^pair, m_mumu) cell on the canonical axes; T_j, R_j as the MC-only "
+           "pT < 5 GeV (no SF) -> MC-weighted mean filled SF of WP muons in [5,6) GeV at the muon eta (0.1 lookup), D5), "
+           "j = (pair pT, eta^pair, m_mumu) cell on the canonical axes; T_j, R_j as the MC-only "
            "product (feed-in included, no cap); docs/tracking/crossx_raa_reco_binned_propagation_20261013.md";
 }
 }  // namespace PairRecoEffRecoBinnedDefinition

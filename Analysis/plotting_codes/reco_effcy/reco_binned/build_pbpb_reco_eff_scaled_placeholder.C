@@ -102,7 +102,7 @@ void build_pbpb_reco_eff_scaled_placeholder()
             for (int k = 1; k <= nc; ++k)
                 hE.SetBinContent(i, k, hEabs.GetBinContent(i, k) / hEabs.GetBinContent(i, nc));
 
-        // ---- G = eps^{reco,SF}_j / eps^{nogap}_p ----
+        // ---- G = eps^{reco,SF}_j (D4; eps^{nogap}_p kept for reference only) ----
         std::unique_ptr<TFile> fp(TFile::Open(sf_prod.c_str(), "READ"));
         std::unique_ptr<TFile> fc(TFile::Open(sf_cells.c_str(), "READ"));
         if (!fp || fp->IsZombie() || !fc || fc->IsZombie()) throw std::runtime_error("cannot open SF product / cells");

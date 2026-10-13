@@ -159,6 +159,8 @@ void fill_pp24_fullsim_pair_reco_sf_cells()
         return [prof](float pt, float eta, float sf) {
             if (sf != 1.f || pt >= kSfValidPtMin) return (double)sf;
             const int b = std::min(std::max(prof->FindFixBin(eta), 1), prof->GetNbinsX());
+            if (!(prof->GetBinEntries(b) > 0))
+                throw std::runtime_error("nearest-valid SF lookup: no filled [5,6) GeV muon at eta " + std::to_string(eta));
             return prof->GetBinContent(b);
         };
     };
@@ -206,6 +208,9 @@ void fill_pp24_fullsim_pair_reco_sf_cells()
     auto n_sf1_above = df.Filter("pair_pass_tight && pass_signal_reco")
                          .Filter(Form("(m1.eff_sf_tight == 1.f && m1.pt >= %g) || (m2.eff_sf_tight == 1.f && m2.pt >= %g)",
                                       kSfValidPtMin, kSfValidPtMin)).Count();
+    auto n_sf1_above_medium = df.Filter("pair_pass_medium && pass_signal_reco")
+                         .Filter(Form("(m1.eff_sf_medium == 1.f && m1.pt >= %g) || (m2.eff_sf_medium == 1.f && m2.pt >= %g)",
+                                      kSfValidPtMin, kSfValidPtMin)).Count();
     auto n_R_tight = df.Filter("pair_pass_tight && pass_signal_reco").Count();
 
     TFile fout(out_file.c_str(), "RECREATE");
@@ -225,7 +230,8 @@ void fill_pp24_fullsim_pair_reco_sf_cells()
         std::cout << Form("[sf] %s: <SF_1 SF_2> over R = %.5f\n", wps[i], *sf_sum[i] / *w_sum[i]);
     std::cout << "[sf] Tight R pairs with an unfilled (==1) leg SF: " << *n_sf1_tight << " / " << *n_R_tight
               << "; of which with the unfilled leg at pT >= " << kSfValidPtMin << " GeV: " << *n_sf1_above << "\n";
-    if (*n_sf1_above != 0) throw std::runtime_error("unfilled SF above the tool validity edge -- investigate before using");
+    std::cout << "[sf] Medium R pairs with an unfilled leg at pT >= " << kSfValidPtMin << " GeV: " << *n_sf1_above_medium << "\n";
+    if (*n_sf1_above != 0 || *n_sf1_above_medium != 0) throw std::runtime_error("unfilled SF above the tool validity edge -- investigate before using");
 
     // ---- set identity with the nominal-tree migration file ----
     std::unique_ptr<TFile> fm(TFile::Open(mig_file.c_str(), "READ"));

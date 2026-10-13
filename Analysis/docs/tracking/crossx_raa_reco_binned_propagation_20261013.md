@@ -133,17 +133,30 @@ extra TEMP commit (input dir + lumis) is NEVER merged.
 
 ## Results & Observations
 ### R1 — muon SFs (pp24 fullsim, Tight R pairs)
-⟨SF_1 SF_2⟩ = 0.9308 (Tight), 0.9703 (Medium). Per-muon Tight SF ≈ 0.95 (4.5–6 GeV) → 0.977 (100 GeV); η: ≈0.976 barrel,
-≈0.933 at 1.4<|η|<1.8, 0.99 at η≈0. SF UNAVAILABLE (tool out of validity → NTP default 1) only for muons with
-pT ∈ [4.5, 5) GeV: 15.2 % of muons in the 4.5–6 GeV bin, 4.2 % of all m1 (skim `TrigRates.cxx:1322-1341` zeroes the SF
-on a non-Ok CorrectionCode). Initially kept = 1 — but that is an ANALYSIS choice (the skim zeroes the SF on a non-Ok code), size −3.1 % on ε at
-pair pT 9–12.79 GeV (review it.1; my "≈0.5 %" was wrong: half of the bin-1 R pairs have a leg below 5 GeV) → D5.
-### R2 — ε products (Tight; Medium in brackets)
-pp inclusive ε^{reco,SF} = 0.5510 (0.6245) vs MC-only 0.5919 (0.6436). ε^{nogap} inclusive 0.6895 (0.7619), per pT bin
-0.633 → 0.80. E_Run2 (Tight) 0–10 %: 0.466 (9 GeV) → 0.504 (150 GeV); 60–80 %: 0.563 → 0.644. G_incl 0.799 (0.820);
-G m-integrated ≈ 0.55–0.65 in the gap cells [±1.5,±1] and ≈0.64–0.81 central, ≈1 in gap-free cells.
-⚠ Level: even the most peripheral Run-2 E is 0.80–0.89 × the pp24 ε^{nogap} of the same pT bin (Run-2 vs Run-3, Tight
-fit vs MC) → this ratio enters R_AA directly (Pb+Pb ε lower ⇒ R_AA higher).
+Nominal (D5) ⟨SF_1 SF_2⟩ = 0.9148 (Tight), 0.9636 (Medium); SF = 1 below 5 GeV variation: 0.9308 / 0.9703. Per-muon
+Tight SF ≈ 0.95 (5–6 GeV) → 0.977 (100 GeV); η: ≈0.976 barrel, ≈0.92–0.93 at 1.4<|η|<1.8, 0.99 at η≈0. SF UNAVAILABLE
+(tool out of validity; skim `TrigRates.cxx:1322-1341` zeroes it on a non-Ok code, NTP stores 1) for EVERY muon with
+pT < 5 GeV and for none above (guard in the filler, both WPs) → D5 nearest-valid [5,6) GeV SF at η. D5 vs SF = 1 on
+ε^{reco,SF} (Tight): −3.10 % (9–12.79), −0.94 % (12.79–18.18), −0.53 % (18.18–25.85), −0.33 % … −0.07 % above;
+−1.72 % inclusive (review it.2 verified). Cancels in R_AA (both systems carry ε^{reco,SF}).
+### R2 — ε products (Tight; Medium in brackets), D4/D5 nominal
+pp inclusive ε^{reco,SF} = 0.5415 (0.6202) vs MC-only 0.5919 (0.6436); per pT bin m-integrated ≈ 0.49 → 0.64.
+Pb+Pb: C_Run2 = E_Run2/E_Run2(60–80 %) (Tight), per pT bin, centrality 0–10/10–20/20–30/30–40/40–50/50–60/60–80 %:
+| pT [GeV] | 0–10 | 10–20 | 20–30 | 30–40 | 40–50 | 50–60 | 60–80 |
+|---|---|---|---|---|---|---|---|
+| 9–12.79 | 0.829 | 0.932 | 0.972 | 0.995 | 1.008 | 1.027 | 1 |
+| 12.79–18.18 | 0.794 | 0.902 | 0.939 | 0.968 | 0.975 | 0.990 | 1 |
+| 18.18–25.85 | 0.787 | 0.897 | 0.933 | 0.962 | 0.969 | 0.983 | 1 |
+| 25.85–36.74 | 0.784 | 0.895 | 0.930 | 0.960 | 0.966 | 0.980 | 1 |
+| 36.74–52.23 | 0.783 | 0.896 | 0.930 | 0.959 | 0.964 | 0.978 | 1 |
+| 52.23–74.24 | 0.783 | 0.897 | 0.930 | 0.959 | 0.964 | 0.976 | 1 |
+| 74.24–105.53 | 0.783 | 0.898 | 0.930 | 0.959 | 0.963 | 0.975 | 1 |
+| 105.53–150 | 0.783 | 0.902 | 0.932 | 0.960 | 0.962 | 0.974 | 1 |
+(Medium 0–10 %: 0.822–0.832.) C_Run2 > 1 only at 9–12.79 GeV, 40–60 % (≤ 2.7 %, inherited non-monotonicity of the
+Run-2 fits; placeholder systematic). Absolute E_Run2 (reference, h_E_run2_abs): Tight 0–10 % 0.466–0.504, 60–80 %
+0.563–0.644, i.e. 0.80–0.89 × pp24 ε^{nogap} even peripheral — the level D4 removes from R_AA.
+Superseded D1-era products (E absolute × ε^{reco,SF}/ε^{nogap}, SF=1 below 5 GeV) were used only for the first
+(01:00) RDF/plot pass, overwritten by the D4/D5 rerun.
 ### R3 — R_AA high-pT investigation (subagent, read-only; scratch merged below)
 Conclusion (on the 10-07 inputs, before this propagation): NO crossx-process mistake inflates high-pT R_AA.
 (B) cells > 1 are statistics: 74–150 GeV integrated R_AA < 1 in every centrality (0.45±0.09 … 0.59±0.21); all 34 cells
@@ -216,4 +229,4 @@ Ruled out: weight blow-up (pp N_eff/N>=0.75; PbPb flat), TF1 out-of-range/floors
 - Steps 4–6 (rerun with D4/D5, plots, reviews, commit).
 
 ## Latest Stage
-00:55 — Step 2: write SF-cells filler (reco_binned/), extend builder (SF variant), Pb+Pb product builder.
+02:00 — code review it.2 → fixing marker/doc WARNINGs; rebuild products, rerun RDF + plots (D4/D5) from the worktree; then /review-plot on result plots, commit, report.

@@ -218,7 +218,8 @@ without a gap window; tracking doc §3d/R4).
 **Data/MC scale factors (2026-10-13).** ε^reco_j is an MC efficiency; it is brought to data with the
 single-muon data/MC efficiency SFs of the skim's MuonEfficiencyScaleFactors tool (WP-matched), as a
 pair = product of the two legs, applied on the MC reco numerator:
-ε^{reco,SF}_j = Σ_{R_j} w·SF₁·SF₂ / N[T_j] (Tight: ⟨SF₁SF₂⟩ = 0.931, inclusive ε 0.592 → 0.551).
+ε^{reco,SF}_j = Σ_{R_j} w·SF₁·SF₂ / N[T_j] (Tight: ⟨SF₁SF₂⟩ = 0.915, inclusive ε 0.592 → 0.542; Medium 0.964,
+0.644 → 0.620; with SF = 1 below 5 GeV, the systematic variation: 0.931, 0.551).
 The tool gives no SF below p_T = 5 GeV (all muons in [4.5, 5) GeV); **user decision 2026-10-13: such a muon
 takes the SF of the nearest valid slice, [5, 6) GeV, at its η** (MC-weighted mean); SF = 1 there is the
 systematic variation (−3.1 % on ε at pair p_T 9–12.8 GeV, −1.0 % at 12.8–18.2, ≲0.5 % above; cancels in R_AA).
