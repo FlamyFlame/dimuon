@@ -18,7 +18,7 @@ public:
         static const std::map<std::pair<int,std::string>, double> m = {
             {{17, "2mu4"},          1./256.8  },   // pp Run 2 (2017), 2mu4,        L = 256.8  pb^{-1}
             {{24, "mu4_mu4noL1"},   1./113.999},   // pp 2024, mu4_mu4noL1,         L = 113.999 pb^{-1}
-            {{24, "2mu4"},          1./400.412},   // pp 2024, 2mu4,                L = 400.412 pb^{-1} (prescale-corrected; IntNotes/analysis_metadata.md)
+            {{24, "2mu4"},          1./395.836},   // pp 2024, 2mu4,                L = 395.836 pb^{-1} (prescale-corrected, new GRL v144-pro42-02 = run 488456 LB 84-220 dropped, PPEventSelConfig.h; was 400.412; IntNotes/analysis_metadata.md)
         };
         return m;
     }

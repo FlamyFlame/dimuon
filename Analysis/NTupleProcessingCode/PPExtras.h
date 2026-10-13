@@ -4,6 +4,7 @@
 #include "Riostream.h"
 #include "TChain.h"
 #include "../MuonObjectsParamsAndHelpers/muon_pair_enums_data.h"
+#include "PPEventSelConfig.h"
 
 template <class PairT, class MuonT, class Derived, class... Extras>
 class DimuonDataAlgCoreT;
@@ -24,6 +25,10 @@ protected:
   // the same one the skim used to reference every muon's stored z0.
   std::vector<float>* vtx_z    {nullptr};
   std::vector<int>*   vtx_ntrk {nullptr};
+
+  // Bad-LB exclusion (PPEventSelConfig.h): run 488456 LB 84-220 (new pp-ref GRL), applied before any cut
+  std::vector<PPBadLBRange> evsel_bad_lbs_;
+  bool PassEventSelExtra();
 
   void InitInputBranchesDimuonAnalysisExtra();
   bool PassD0Z0Extra();

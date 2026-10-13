@@ -199,7 +199,7 @@ elif do_hi2026:
 									 "HLT_mu10_L1MU5VF"]
 	DiMuon_triggers = ["HLT_2mu4_L12MU3V", "HLT_mu4_mu4noL1_L1MU3V"]
 elif do_pp2024:
-	GRL = ["physics_2024ppRef_25ns.xml"]
+	GRL = ["physics_ppref2024_all_good.xml"]   # UPDATED 2026-10-12: v144-pro42-02 (run 488456 starts at LB 221); the existing pp24 skim used the old v132 GRL (physics_2024ppRef_25ns_legend_old_lumi_calib.xml)
 	InputFile = "/eos/user/y/yuhang/data/data24_pp_testfile_AOD/data24_5p36TeV.00488427.physics_Main.merge.AOD.f1529_m2259._lb0100._0004.1"
 	Muon_triggers = ["HLT_mu4_L1MU3V",
 									 "HLT_mu6_L1MU3V",

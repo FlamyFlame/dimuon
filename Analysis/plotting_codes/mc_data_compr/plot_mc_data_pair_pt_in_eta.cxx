@@ -17,7 +17,7 @@
 //
 //   data : dimuon_data/pp_2024/histograms_real_pairs_pp_2024_2mu4_nominal.root
 //          h2d_crossx_pair_pt_pair_eta_binned_w_signal_cuts
-//          = (1/L) * sum 1/(eps_trig * eps_reco), L = 400.412 pb^-1, single-b signal region
+//          = (1/L) * sum 1/(eps_trig * eps_reco), L = PPBaseClass 2mu4 (395.836 pb^-1 since 2026-10-12), single-b signal region
 //            (m in (1.08,2.9), pair pT > ParamsSet::signal_pair_pt_min, BOTH muons passing the
 //            fiducial gap cut and |eta^pair| < ParamsSet::pair_eta_fiducial_max), Tight WP.
 //   Pythia: pythia_fullsim_full_sample/histograms_pythia_fullsim_pp24_no_data_resonance_cuts_full.root

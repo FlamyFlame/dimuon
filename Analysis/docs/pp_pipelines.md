@@ -39,7 +39,7 @@ PP data lives in `${DATA_BASE}/pp_2024/`.
 Produce invariant mass spectra and differential cross-section distributions
 for pp 2024. Events are selected using the 2mu4 trigger (`trigger_mode=3`).
 The luminosity factor comes from `PPBaseClass::CrossxFactorMap()`:
-pp24 2mu4 → 1/410.815 pb⁻¹.
+pp24 2mu4 → 1/395.836 pb⁻¹ (2026-10-12: new GRL v144-pro42-02; was 1/400.412 since 2026-06-15, 1/410.815 before; run 488456 LB 84–220 dropped in the NTuple stage, `PPEventSelConfig.h`).
 
 ### Stages
 
