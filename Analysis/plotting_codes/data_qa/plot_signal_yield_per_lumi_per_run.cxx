@@ -26,7 +26,8 @@
 #include "plotting_codes/data_qa/per_run_signal_yield_table.cxx"
 
 namespace {
-struct DS { std::string tag, label, file, lumi_csv, lumi_unit; bool pbpb; int year; double lumi_scale; };
+struct DS { std::string tag, label, file, lumi_csv, lumi_unit; bool pbpb; int year; double lumi_scale;
+           bool lumi_has_good_lb_only = false; };
 const std::string DATA = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
 const std::string LUMI = "/gpfs/mnt/atlasgpfs01/usatlas/workarea/yuhanguo/dimuon_codes/IntNotes/data/luminosity/";
 }
@@ -45,7 +46,15 @@ static std::map<int,double> ReadLumi(const std::string& path) {
 static void PlotOne(const DS& d, const std::string& outdir) {
     per_run_signal_yield_table(d.tag, d.file, d.pbpb, outdir);
     const auto lumi = ReadLumi(LUMI + d.lumi_csv);
-    const auto bad  = d.pbpb ? PbPbBadRuns(d.year) : std::unordered_set<int>{};
+    auto bad  = d.pbpb ? PbPbBadRuns(d.year) : std::unordered_set<int>{};
+    // Partially-bad runs (PbPbBadLBRanges): N counts good LBs only, so N/L needs the good-LB luminosity.
+    // The per-run lumi table of the ORIGINAL GRL covers the bad LBs too -> such runs are not drawn unless
+    // d.lumi_has_good_lb_only (a table made from the updated GRL, e.g. physics_HI2026_50ns_noIBL_updated.xml).
+    if (d.pbpb && !d.lumi_has_good_lb_only)
+        for (auto& r : PbPbBadLBRanges(d.year)) {
+            bad.insert(r.run);
+            std::cout << "[" << d.tag << "] run " << r.run << " not drawn: good-LB luminosity not in " << d.lumi_csv << "\n";
+        }
     std::map<int,double> N;
     { std::ifstream f(outdir + "/" + d.tag + "_per_run.csv"); std::string l; std::getline(f, l);
       while (std::getline(f, l)) { int r; long np, ne; double sw; char c;
@@ -91,7 +100,7 @@ static void PlotOne(const DS& d, const std::string& outdir) {
     c->SaveAs((outdir + "/" + d.tag + "_signal_yield_per_lumi_per_run.png").c_str());
 }
 
-void plot_signal_yield_per_lumi_per_run() {
+void plot_signal_yield_per_lumi_per_run(const std::string& only_tag = "") {
     const std::string outdir = DATA + "plots/data_qa/signal_yield_per_lumi_per_run";
     gSystem->mkdir(outdir.c_str(), true);
     std::vector<DS> ds = {
@@ -101,5 +110,5 @@ void plot_signal_yield_per_lumi_per_run() {
         {"pbpb25","Pb+Pb 2025, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2025/muon_pairs_pbpb_2025_single_mu4_mindR_0_02.root",    "pbpb_2025/lumitable_pbpb_25_HLT_mu4.csv",      "nb",  true, 2025, 1e-3},
         {"pbpb26","Pb+Pb 2026, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2026/muon_pairs_pbpb_2026_single_mu4_mindR_0_02.root",    "pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv",      "nb",  true, 2026, 1e-3},
     };
-    for (auto& d : ds) PlotOne(d, outdir);
+    for (auto& d : ds) if (only_tag.empty() || d.tag == only_tag) PlotOne(d, outdir);
 }

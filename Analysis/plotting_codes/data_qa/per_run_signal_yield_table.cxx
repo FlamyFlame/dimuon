@@ -12,6 +12,7 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TSystem.h"
 #include "MuonObjectsParamsAndHelpers/ParamsSet.h"
+#include "NTupleProcessingCode/PbPbEventSelConfig.h"
 
 void per_run_signal_yield_table(const std::string& tag, const std::string& file, bool is_pbpb,
                                 const std::string& outdir) {
@@ -26,6 +27,12 @@ void per_run_signal_yield_table(const std::string& tag, const std::string& file,
     auto n_all = df.Count();
     ROOT::RDF::RNode n = df.Filter("pair_pass_tight", "tight");
     if (is_pbpb) {
+        // data-quality exclusion (PbPbBadRuns / PbPbBadLBRanges): already applied at NTuple stage once the NTuple is
+        // regenerated with it; repeated here so an older NTuple cannot leak excluded runs/LBs into the plot
+        const int yr = std::stoi(tag.substr(tag.size() - 2));
+        const auto bad_runs = PbPbBadRuns(yr); const auto bad_lbs = PbPbBadLBRanges(yr);
+        n = n.Filter([bad_runs, bad_lbs](UInt_t r, UInt_t lb) { return !PbPbIsBadRunLB(bad_runs, bad_lbs, (int)r, lb); },
+                     {"run_number", "lb"}, "good run/LB");
         const std::string ctr = "avg_centrality >= " + std::to_string(ParamsSet::ctrbins.front())
                               + " && avg_centrality < " + std::to_string(ParamsSet::ctrbins.back());
         n = n.Filter(ctr, "centrality acceptance");
