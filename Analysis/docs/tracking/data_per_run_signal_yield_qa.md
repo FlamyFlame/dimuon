@@ -193,7 +193,36 @@ error flags) of sampled AOD files and count what fraction of each file's events 
   other May-2026 tasks (2023 parts 1/4, 2024, 2025, pp24) have NOT been audited for orphaned outputs.
 - Scratch evidence (session scratchpad, not kept): task/job JSONs, `match_out.txt`, `perlb_*.csv`.
 
+# Round 4 (2026-10-13): recover the lost 463315 / 462759 events
+
+## Requests (user, 2026-10-13)
+R4a. List the other May-2026 skim tasks.
+R4b. Replace these runs' events in part2/3, or (easier, since part1-3/5 are rucio files on BNL LOCALGROUPDISK) add the
+missing events. Be very careful to avoid duplication.
+
+## Plan R4b
+Rucio files on LGD cannot be rewritten, so the lost events go into a NEW supplementary part `data_pbpb23_part6.root`:
+1. Wait for 53029101 to finish (background poller, BigPanDA every 20 min). Download its merged outputs to a separate dir.
+2. Completeness of the re-skim: BigPanDA merge-input count = finished trf outputs (no orphans); every May event of the two
+   runs is in the re-skim (May set is a subset); per-LB: no GRL LB empty; N_HLT/AOD back to the 0.35-0.41 band.
+3. Supplement = re-skim events of runs 463315/462759 whose (RunNumber, eventNumber) is NOT in part3/part2 (event-level
+   dedup, independent of which job outputs were orphaned). Drop the new branch `muon_match_L1MU3V` so the schema equals
+   part1-5. Abort if the re-skim has internal duplicates.
+4. Verify: union (part2/3 + part6) of each run has no duplicate eventNumber and equals the re-skim set exactly.
+5. Wire part6 into the PbPb23 part count (`file_batch_max{23}`, `queue N` in the run_pbpb_23*.sub, plotting part lists).
+
+## Findings R4
+- R4a: May-2026 = 15 tasks (`may2026_skim.txt`): PbPb23 50270743 (part1, v2), 50267236, 50267250, 50267265; PbPb24
+  50267371, 50267396; PbPb25 50267423, 50267435, 50267444, 50267472, 50267482, 50267490; pp24 50267518, 50267529,
+  50267539. Plus the Sep-2026 recovery of the abandoned files (`sep2026_may26_recovery.txt`): 52569154 (PbPb23 part5),
+  52569156 (PbPb25 part7), 52569161 (pp24 part13). All used `--mergeOutput`; none except part2/3 audited for orphans.
+- Re-skim (HEAD TrigRates) vs May skim, 58 overlapping events of 463315 LB 669 (AOD `_000003`): all 168 common branches
+  identical element by element (23 752 values, TTreeFormula); the re-skim has one extra branch `muon_match_L1MU3V`.
+  Skim files hold only the `HeavyIonD3PD` tree. May event lists have no duplicate eventNumbers (462759: 537 740,
+  463315: 1 728 372). The two runs occur only in part2/part3 input lists (not part1/4, not the part5 file list).
+
 ## Latest Stage
+2026-10-13 R4: waiting for 53029101 (status `scouting` at 04:31); poller running; then plan R4b steps 2-5.
 2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
 submitted. Open: audit every May-2026 task for orphaned outputs; recover the missing files of 463315/462759 (e.g. from
 53029101 once checked complete) → user decision on how to integrate (replace runs in part2/3, no double counting).
