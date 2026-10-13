@@ -148,5 +148,53 @@ with NO localized hole or deficit, only a mild excess spread over the map. Consi
 
 **Rule recorded (user 2026-10-12):** diagnosis plots are exempt from `/review-plot` (`.claude/CLAUDE.md` §Auto-Dispatch Rules).
 
+---
+# Round 3 (2026-10-12): skim bookkeeping of PbPb23 463315 / 462759
+
+## Requests (user, 2026-10-12)
+R3a. Find the skimming logs / grid tasks for 463315 and 462759 and check whether something went wrong in the skim.
+R3b. Submit a small grid re-skim of just these two runs (`SkimCode/run_23hi/`).
+
+## Plan
+Task IDs from `~/usatlasdata/dimuon_data/may2026_skim.txt`; BigPanDA task/job JSON per input dataset; per-LB skim counts
+vs GRL; download/hadd record in `grid_monitor_status.log`; per-file test = read EventInfo (LB, eventNumber, detector
+error flags) of sampled AOD files and count what fraction of each file's events is in the skim.
+
+## Findings R3
+- Tasks: 462759 → 50267236 (part2), 463315 → 50267250 (part3). JEDI: every input file of both runs `finished`
+  (462759 393/393, 1 818 081 ev; 463315 2302/2302, 10 456 893 ev); no failed/abandoned files (the 78 abandoned files of
+  part2 are all run 462969 → recovery part5). Grid output datasets are now empty (expired).
+- Download + hadd lossless: 210/210 merged part3 files downloaded, pre-merge entries = 44 525 454 = `data_pbpb23_part3.root`.
+- Lumi and skim GRL agree (463315: 402 LBs, 462759: 76 LBs, same in GRL v120-pro33-03 and the HLT_mu4 lumitable).
+- AOD events / lumi is NORMAL for both runs (0.248 and 0.237 ×10⁹/nb vs 0.23–0.26 for the neighbouring runs); the deficit
+  is skimmed HLT_mu4 events / AOD event: 463315 0.165, 462759 0.296 vs 0.35–0.41 for neighbours.
+- Per-LB skim counts: 101 of 402 GRL LBs of 463315 and 14 of 76 of 462759 have ZERO skimmed events; present LBs have
+  quantized-looking counts (~1 000 / ~3 500 / ~7 000 / ~19 000). Reference runs 463308 / 462763 have no such gaps.
+- Skim code (`fe3b18b` `TrigRates::execute`): events are silently dropped (no job error) by `CleaningCuts`
+  (errorState==Error in Pixel/SCT/TRT/Muon/LAr/Tile/Core, or Core flag bit 18) or by failing all listed triggers.
+- R3b submitted: jediTaskID **53029101**, `user.yuhang.TrigRates.dimuon.PbPb2023data.Oct2026.v1.rerun463315_462759.`
+  (`run_23hi/grid_sub_rerun_463315_462759.sh`, `InDstxt_PbPb2023data_rerun_463315_462759.txt`; HEAD source, same GRL/mode;
+  local 200-event test OK). Name has NO `partN` on purpose: never auto-merge into `data_pbpb23_partN` (double counting).
+
+- **ROOT CAUSE (R3a): JEDI `--mergeOutput` left finished job outputs unmerged.** Per-file test (EventInfo of sampled
+  AODs vs the skim's eventNumbers): each AOD file is all-or-nothing, either 0.33–0.44 of its events in the skim (the
+  normal HLT_mu4 fraction) or exactly 0. 463315: 37/61 files (61 %) absent, 0 detector-error-flagged events in any file.
+  462759: 10/40 (25 %) absent. Expected N_HLT/AOD = 0.39×0.39 ≈ 0.15 and 0.40×0.75 ≈ 0.30, observed 0.165 and 0.296, so
+  the missing files account for the whole deficit. Example: AOD `_000550/_000551` → job 7139059832 (DESY-HH, finished,
+  exit 0, 2.95 MB output `panda.um...EXT0._002502`). That output has status `ready` and NO pmerge job consumed it, whereas
+  the good job's output `_002354` was merged by pmerge 7140576483 into `EXT0._000053`. Counting the inputs of all merge jobs
+  (210 + 228): part3 merged 9 666 of 10 378 finished job outputs (**712 orphaned, 6.9 %**), part2 9 506 of 9 568 (62).
+  Confirmed `ready`-never-merged outputs so far: 109 (part3) + 49 (part2). 608 more part3 lookups were rate-limited by
+  BigPanDA; not yet attributed to runs. The skim CODE is not at fault (the jobs ran and wrote output); this is a merge-step
+  loss on the grid, invisible to task status (`done` 100 %) and to the download/hadd check.
+- Caveat for 53029101: it also uses `--mergeOutput`, so it can lose files the same way. Check its per-LB completeness
+  against the AOD before trusting it.
+- Possible other victims: 463380 (N_HLT/AOD 0.350, N_HLT/L 0.91× the neighbours) and 463364 (0.367), both part3. The
+  other May-2026 tasks (2023 parts 1/4, 2024, 2025, pp24) have NOT been audited for orphaned outputs.
+- Scratch evidence (session scratchpad, not kept): task/job JSONs, `match_out.txt`, `perlb_*.csv`.
+
 ## Latest Stage
-2026-10-12: R1 replotted (522336/522355 waiting for good-LB lumi); R2a–d delivered. Open: (1) good-LB lumitable from the updated GRL → redraw pbpb26; (2) rerun pbpb26 per-run + pair plots after the Step-17 NTuple hadd; (3) experts/user: 463315 skim bookkeeping, 2026 ZDC-time shift in 522041/522200.
+2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
+submitted. Open: audit every May-2026 task for orphaned outputs; recover the missing files of 463315/462759 (e.g. from
+53029101 once checked complete) → user decision on how to integrate (replace runs in part2/3, no double counting).
+Previous: R1 replotted (522336/522355 waiting for good-LB lumi); R2a–d delivered. Open: (1) good-LB lumitable from the updated GRL → redraw pbpb26; (2) rerun pbpb26 per-run + pair plots after the Step-17 NTuple hadd; (3) experts/user: 463315 skim bookkeeping, 2026 ZDC-time shift in 522041/522200.
