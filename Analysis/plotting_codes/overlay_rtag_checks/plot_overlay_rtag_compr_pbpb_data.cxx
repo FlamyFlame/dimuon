@@ -143,7 +143,8 @@ namespace {
         const std::string base = "/usatlas/u/yuhanguo/usatlasdata/dimuon_data/";
         if (yr == 23) return {base+"pbpb_2023/data_pbpb23_part1.root", base+"pbpb_2023/data_pbpb23_part2.root",
                               base+"pbpb_2023/data_pbpb23_part3.root", base+"pbpb_2023/data_pbpb23_part4.root",
-                              base+"pbpb_2023/data_pbpb23_part5.root"};
+                              base+"pbpb_2023/data_pbpb23_part5.root",
+                              base+"pbpb_2023/data_pbpb23_part6.root"};
         if (yr == 24) return {base+"pbpb_2024/data_pbpb24_part1.root", base+"pbpb_2024/data_pbpb24_part2.root"};
         throw std::runtime_error("DataParts: only Pb+Pb 2023 and 2024 are configured, got " + std::to_string(yr));
     }
@@ -187,8 +188,8 @@ namespace {
 }
 
 // ============================ DATA: one pass, all four quantities ============================
-// yr_sel/part_sel >= 0 process ONE skim part into its own file under cache_parts/, so the seven
-// parts (five 2023 + two 2024) can run as seven concurrent processes and be hadd-ed afterwards;
+// yr_sel/part_sel >= 0 process ONE skim part into its own file under cache_parts/, so the eight
+// parts (six 2023 + two 2024) can run as eight concurrent processes and be hadd-ed afterwards;
 // the counters are stored as a histogram precisely so that hadd sums them instead of keeping the
 // first file's copy.  yr_sel < 0 keeps the original single-process behaviour.
 void fill_data(Long64_t max_per_year = -1, int yr_sel = -1, int part_sel = -1) {

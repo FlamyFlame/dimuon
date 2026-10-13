@@ -7,4 +7,4 @@ log = logs/run_pbpb_23_nominal_batch_$(Process).log
 request_memory = 2GB
 # queue N = part count on disk; keep equal to file_batch_max{23} in PbPbExtras.c
 # (preflight_pbpb_year.sh 23 cross-checks). Too few SILENTLY drops data.
-queue 5
+queue 6

@@ -115,6 +115,7 @@ static std::map<int, std::vector<std::string>> BuildFileMap() {
             base + "pbpb_2023/data_pbpb23_part3.root",
             base + "pbpb_2023/data_pbpb23_part4.root",
             base + "pbpb_2023/data_pbpb23_part5.root",
+            base + "pbpb_2023/data_pbpb23_part6.root",
         }},
         {24, {
             base + "pbpb_2024/data_pbpb24_part1.root",

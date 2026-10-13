@@ -51,7 +51,7 @@ void plot_npairs_vs_centrality() {
     // Sep-2026 recovery skims; 2026 = 7).  Keep equal to file_batch_max in PbPbExtras.c;
     // pipelines/preflight_pbpb_year.sh <yr> cross-checks.  An UNDER-count silently reads a subset.
     std::vector<YearInfo> wanted = {
-        {2023, base + "pbpb_2023/", "pbpb_2023", 5, kBlue+1,     "PbPb 2023", {}},
+        {2023, base + "pbpb_2023/", "pbpb_2023", 6, kBlue+1,     "PbPb 2023", {}},
         {2024, base + "pbpb_2024/", "pbpb_2024", 2, kRed+1,      "PbPb 2024", {}},
         {2025, base + "pbpb_2025/", "pbpb_2025", 7, kGreen+2,    "PbPb 2025", {}},
         {2026, base + "pbpb_2026/", "pbpb_2026", 7, kMagenta+1,  "PbPb 2026", {}},

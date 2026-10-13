@@ -48,7 +48,8 @@ static std::vector<std::string> FilesForYear(int yr) {
                            base+"data_pbpb23_part2.root",
                            base+"data_pbpb23_part3.root",
                            base+"data_pbpb23_part4.root",
-                           base+"data_pbpb23_part5.root" };
+                           base+"data_pbpb23_part5.root",
+                           base+"data_pbpb23_part6.root" };
     if (yr == 24) return { base+"data_pbpb24_part1.root",
                            base+"data_pbpb24_part2.root" };
     if (yr == 25) return { base+"data_pbpb25_part1.root",

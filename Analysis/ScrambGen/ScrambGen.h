@@ -42,7 +42,7 @@ private:
    // files and QUEUE_COUNTS in the Pb+Pb pipelines; preflight_pbpb_year.sh <yr> cross-checks.
    static int NParts(int yr){
       switch (yr % 2000) {
-         case 23: return 5;
+         case 23: return 6;
          case 24: return 2;
          case 25: return 7;
          case 26: return 7;

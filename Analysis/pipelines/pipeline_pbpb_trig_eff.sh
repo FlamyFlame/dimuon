@@ -242,10 +242,10 @@ wait_for_cluster_completion() {
 }
 
 # Queue counts per year = merged part files on disk (2023 part5 / 2025 part7 = Sep-2026
-# recovery skims; 2026 = 7).  Must equal file_batch_max in PbPbExtras.c and `queue N` in the
+# recovery skims; 2023 part6 = Oct-2026 re-skim of the events lost in 463315/462759; 2026 = 7).  Must equal file_batch_max in PbPbExtras.c and `queue N` in the
 # run_pbpb_<yr>*.sub files -- preflight_pbpb_year.sh <yr> cross-checks.  Too few silently
 # processes only part of a year.
-declare -A QUEUE_COUNTS=( [23]=5 [24]=2 [25]=7 [26]=7 )
+declare -A QUEUE_COUNTS=( [23]=6 [24]=2 [25]=7 [26]=7 )
 
 get_year_dir() { echo "${DATA_BASE}/pbpb_20$1"; }
 

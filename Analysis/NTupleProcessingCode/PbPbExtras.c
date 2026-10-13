@@ -265,7 +265,8 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   bool is_run3_local = (run_year_short > 20);
 
   // Part counts = merged data_pbpb<yr>_part<N>.root files on disk (Sep-2026 recovery skims
-  // added 2023 part5 and 2025 part7; 2026 = 7 parts, every GRL run at 100 %).  A too-low
+  // added 2023 part5 and 2025 part7; 2023 part6 = Oct-2026 re-skim of the events the May merge
+  // step lost in runs 463315/462759; 2026 = 7 parts, every GRL run at 100 %).  A too-low
   // value SILENTLY processes a subset of the year, and the Condor model (one job per
   // file_batch in 1..queue) assumes contiguity.  Keep this equal to the .sub queue counts,
   // QUEUE_COUNTS in the Pb+Pb pipelines, ScrambGen::NParts and the plotting part lists --
@@ -274,7 +275,7 @@ void PbPbExtras<Derived>::InitParamsExtra(){
   // (strict pattern: a plain glob also matches the *.bak_<date>.root re-merge files).
   // grid_monitor rewrites these entries automatically -- keep the exact "{yy, N}" spacing.
   std::map<int, int> run_year_to_file_batch_max_map = {
-    {23, 5}, {24, 2}, {25, 7}, {26, 7}, {15, 7}, {18, 7}
+    {23, 6}, {24, 2}, {25, 7}, {26, 7}, {15, 7}, {18, 7}
   };
   // check for run year
   if (is_run3_local){
