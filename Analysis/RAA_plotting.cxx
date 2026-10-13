@@ -17,6 +17,7 @@
 #include <TLine.h>
 #include <TGraphErrors.h>
 #include <TArrow.h>
+#include <TPad.h>
 #include <stdexcept>
 
 class RAAPlotting{
@@ -528,10 +529,27 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 		}
 		const double yhi = std::max(1.2, 1.6 * ymax_prec);   // linear R_AA; headroom for the panel label
 		const double ylo = (ymin_draw < 0.) ? -0.3 * yhi : 0.;  // show negative OS-SS fluctuations when present
-		TCanvas* c = new TCanvas(Form("c_raa_pt_eta_%zu", ic), "", 450 * ncol, 350 * nrow);
-		c->Divide(ncol, nrow);
+		// All labels go in a HEADER STRIP above the panel grid, outside every data frame: off-scale
+		// points and large high-pT error bars can land in any panel corner (review-plot 2026-10-13).
+		const double kHeadFrac = 0.10;
+		TCanvas* c = new TCanvas(Form("c_raa_pt_eta_%zu", ic), "", 450 * ncol, (int)(350 * nrow / (1. - kHeadFrac)));
+		c->cd();
+		TPad* head = new TPad(Form("head_%zu", ic), "", 0., 1. - kHeadFrac, 1., 1.);
+		TPad* grid = new TPad(Form("grid_%zu", ic), "", 0., 0., 1., 1. - kHeadFrac);
+		head->Draw(); grid->Draw();
+		head->cd();
+		{
+			TLatex a; a.SetNDC();
+			a.SetTextFont(72); a.SetTextSize(0.30); a.DrawLatex(0.02, 0.55, "ATLAS");
+			a.SetTextFont(42); a.DrawLatex(0.105, 0.55, "Internal");
+			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.24);
+			t.DrawLatex(0.25, 0.58, Form("%s, centrality %d-%d%%;  %s", legend_pbpb_label.c_str(), clo, chi, legend_pp_label.c_str()));
+			t.DrawLatex(0.25, 0.20, Form("m_{#mu#mu}#in(1.08,2.9) GeV, p_{T}^{pair}>%g GeV;  opposite sign #minus same sign, tight WP;  reco-eff + T_{AA}: PLACEHOLDERS",
+			                             ParamsSet::signal_pair_pt_min));
+		}
+		grid->Divide(ncol, nrow);
 		for (int ip = 0; ip < npan; ++ip){
-			c->cd(ip + 1);
+			grid->cd(ip + 1);
 			gPad->SetLogx();   // pT_bins_150 is log-binned (as in the crossx panels)
 			gPad->SetLeftMargin(0.16);
 			gPad->SetBottomMargin(0.18);
@@ -571,21 +589,6 @@ void RAAPlotting::PlotPairPtInEtaPanels(){
 			}
 			TLatex t; t.SetNDC(); t.SetTextFont(42); t.SetTextSize(0.055);
 			t.DrawLatex(0.20, 0.84, Form("%.1f < #eta^{pair} < %.1f", panels[ip].first, panels[ip].second));
-			if (ip == 1){   // ATLAS label + dataset block in the second panel (panel 1 has off-scale bars)
-				TLatex a; a.SetNDC();
-				a.SetTextFont(72); a.SetTextSize(0.06); a.DrawLatex(0.55, 0.84, "ATLAS");
-				a.SetTextFont(42); a.DrawLatex(0.72, 0.84, "Internal");
-				TLatex t2; t2.SetNDC(); t2.SetTextFont(42); t2.SetTextSize(0.045);
-				t2.DrawLatex(0.20, 0.76, legend_pbpb_label.c_str());
-				t2.DrawLatex(0.20, 0.69, Form("centrality %d-%d%%", clo, chi));
-				t2.DrawLatex(0.20, 0.62, legend_pp_label.c_str());
-			}
-			if (ip == 2){
-				TLatex t3; t3.SetNDC(); t3.SetTextFont(42); t3.SetTextSize(0.045);
-				t3.DrawLatex(0.20, 0.76, Form("m_{#mu#mu}#in(1.08,2.9) GeV, p_{T}^{pair}>%g GeV", ParamsSet::signal_pair_pt_min));
-				t3.DrawLatex(0.20, 0.69, "opposite sign #minus same sign, tight WP");
-				t3.DrawLatex(0.20, 0.62, "reco-eff + T_{AA}: PLACEHOLDERS");
-			}
 		}
 		const std::string out = out_dir + "raa_" + obs_suffix + Form("_ctr%d_%d", clo, chi) + run_year_trigger_suffix + ".png";
 		c->SaveAs(out.c_str());

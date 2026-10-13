@@ -225,8 +225,12 @@ void PlotMCDataComprSignalKinematics::Run(){
         // Room at BOTH ends: the top strip is for the auto-placed legend, and a bottom gap is
         // what stops ROOT squeezing the box onto the lowest curve when the top happens to be taken.
         const double ylo = ymin * 0.25;
-        // headroom for the auto-placed legend (header + up to 3 entries) above the data
-        const double yhi = logy ? ymax * 30.0 : ymax * 1.7;
+        // Headroom computed, not tuned: the legend box starts at kLegendBottom (NDC) ~ frame fraction
+        // 0.55 of the main pad, so the data peak is placed at that fraction of the frame height --
+        // on a log axis in log space, on a linear axis linearly.
+        const double kPeakFrac = 0.52;
+        const double yhi = logy ? std::pow(10., std::log10(ylo) + (std::log10(ymax) - std::log10(ylo)) / kPeakFrac)
+                                : ymax / kPeakFrac;
         if (logy) series[first].h->GetYaxis()->SetRangeUser(ylo, yhi);
         else      series[first].h->GetYaxis()->SetRangeUser(0., yhi);
         if (logy) McDataComprRatio::ApplyLogYLabelPolicy(series[first].h, ylo, yhi);
@@ -238,9 +242,9 @@ void PlotMCDataComprSignalKinematics::Run(){
 
         // The sign goes in the legend HEADER; each entry names its own selection, so the two pads
         // cannot be confused for the same MC object.
-        // Explicit NDC box inside the headroom reserved above (log x30 / linear x1.7): auto-placement
+        // Explicit NDC box inside the headroom reserved above (kPeakFrac): auto-placement
         // put it bottom-left onto the data (review-plot 2026-10-13).
-        TLegend* l = new TLegend(0.22, 0.64, 0.92, 0.90);
+        TLegend* l = new TLegend(0.26, 0.64, 0.92, 0.90);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(42);
