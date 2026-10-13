@@ -46,7 +46,8 @@ inline std::map<int,double> ReadLumi(const std::string& path) {   // Prescale Co
 }
 
 void run_norm_diagnostics(int yr, const std::string& evsel_root, const std::string& pair_file, const std::string& lumi_csv,
-                          std::vector<int> targets, const std::string& plotbase, int lb_group = 10) {
+                          std::vector<int> targets, const std::string& plotbase, int lb_group = 10,
+                          bool lumi_has_good_lb_only = false) {
     using namespace rnd;
     yr %= 2000;
     ROOT::EnableImplicitMT(); gStyle->SetOptStat(0);
@@ -82,10 +83,11 @@ void run_norm_diagnostics(int yr, const std::string& evsel_root, const std::stri
         const int r = (int)h_all->GetXaxis()->GetBinLowEdge(b);
         auto it = lumi.find(r);
         if (it == lumi.end() || it->second <= 0) { std::cout << "run " << r << ": no lumi, skipped\n"; continue; }
-        // Partially-bad runs (PbPbBadLBRanges): the per-run lumi row covers the bad LBs too -> L unknown (NaN);
-        // the run still enters the lumi-free factors.
+        // Partially-bad runs (PbPbBadLBRanges): unless the table was made from a GRL that already drops the bad LBs
+        // (lumi_has_good_lb_only), its per-run row covers the bad LBs too -> L unknown (NaN); the run still enters
+        // the lumi-free factors.
         double L = it->second / 1000.;
-        for (auto& br : bad_lbs) if (br.run == r) { L = std::nan(""); std::cout << "run " << r << ": good-LB lumi pending (L-dependent factors not drawn)\n"; }
+        if (!lumi_has_good_lb_only) for (auto& br : bad_lbs) if (br.run == r) { L = std::nan(""); std::cout << "run " << r << ": good-LB lumi pending (L-dependent factors not drawn)\n"; }
         rows.push_back({r, L, nhlt, h_c80->GetBinContent(b, 6), (double)evs[r].size()});
     }
 

@@ -108,7 +108,7 @@ void plot_signal_yield_per_lumi_per_run(const std::string& only_tag = "") {
         {"pbpb23","Pb+Pb 2023, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2023/muon_pairs_pbpb_2023_single_mu4_mindR_0_02.root",    "pbpb_2023/lumitable_pbpb_23_HLT_mu4.csv",      "nb",  true, 2023, 1e-3},
         {"pbpb24","Pb+Pb 2024, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2024/muon_pairs_pbpb_2024_single_mu4_mindR_0_02.root",    "pbpb_2024/lumitable_pbpb_24_HLT_mu4.csv",      "nb",  true, 2024, 1e-3},
         {"pbpb25","Pb+Pb 2025, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2025/muon_pairs_pbpb_2025_single_mu4_mindR_0_02.root",    "pbpb_2025/lumitable_pbpb_25_HLT_mu4.csv",      "nb",  true, 2025, 1e-3},
-        {"pbpb26","Pb+Pb 2026, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2026/muon_pairs_pbpb_2026_single_mu4_mindR_0_02.root",    "pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv",      "nb",  true, 2026, 1e-3},
+        {"pbpb26","Pb+Pb 2026, HLT_mu4, #sqrt{s_{NN}} = 5.36 TeV",   DATA + "pbpb_2026/muon_pairs_pbpb_2026_single_mu4_mindR_0_02.root",    "pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv",      "nb",  true, 2026, 1e-3, true},   // regenerated 2026-10-12 from the updated GRL: good-LB lumi
     };
     for (auto& d : ds) if (only_tag.empty() || d.tag == only_tag) PlotOne(d, outdir);
 }
