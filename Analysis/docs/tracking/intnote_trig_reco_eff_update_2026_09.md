@@ -292,6 +292,14 @@ Confirmed against the code by the subagents and by me; **no sibling doc was edit
   singles, the SF), `..._pairpt_52.2_74.2.png` (last region-A bin, per-cell fits). Closure figure dropped.
 
 ## Remaining Work
+- **DONE 2026-10-07 (`intnote_trig_reco_eff_update_2026_10.md`):** (added 2026-10-06 by `pair_reco_eff_origin_test_and_views.md` D3) `IntNotes/tex/reconstruction_efficiency.tex`
+  is stale: ALL single-b denominator wording and ALL ε_reco numbers in §sec:eff:reco* — e.g. denominator
+   definition l.47–48 ("opposite-sign pair of muons from the same b-hadron decay chain"), text l.30, 41,
+   100, captions l.172, 204, 219, 243, marker description l.107 (now also the pair-category marker),
+   empty-cell count l.137–139 (145 → 144 in total; recompute the note's sub-counts too), inclusive ε l.154–155, 277, 404 (0.585/0.636 → 0.584/0.635),
+   per-bin values l.182, 185. Since
+  2026-10-06 the applied ε_reco uses ALL truth opposite-sign pairs in the truth signal region (inclusive
+  Tight 0.5841, Medium 0.6351). Text + captions must be updated; figures will follow on the next sync.
 - Commit (IntNotes submodule, then parent) — Step 6.
 - After the user's decisions: closure of the hybrid on the current inputs (closure code must be
   brought to the hybrid form first); datasets chapter update for 2026; `pair_reco_eff_gap_acceptance.md`

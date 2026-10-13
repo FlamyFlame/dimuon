@@ -26,6 +26,15 @@ inline const char* Value() {
            "gap acceptance INCLUDED (2026-09-17, docs/tracking/pair_reco_eff_gap_acceptance.md)";
 }
 
+// Which truth pairs populate the APPLIED product (written by build_pp24_fullsim_pair_reco_eff.C,
+// read by its plotter). ALL truth opposite-sign pairs of any origin since 2026-10-06: the
+// origin-independence test found no cell-level difference between from_same_b pairs and the rest
+// in populated cells, and all-OS adds 18 % effective statistics
+// (docs/tracking/pair_reco_eff_origin_test_and_views.md R1, D3). Was `_single_b`.
+inline const char* CategoryKey()   { return "pair_reco_eff_pair_category"; }
+inline const char* CategoryValue() { return "all truth opposite-sign pairs (any origin)"; }
+inline const char* CategoryRdfTag() { return "_op"; }   // the RDF pair-category suffix
+
 }  // namespace PairRecoEffDefinition
 
 #endif  // PAIR_RECO_EFF_DEFINITION_H

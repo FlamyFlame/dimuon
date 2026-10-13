@@ -179,7 +179,11 @@ elif do_hi2026:
 	# 2026 Pb+Pb GRL: periods J+K, defect tag DetStatus-v144-pro58-01, ignoring
 	# PIXEL_PERFORMANCE_INTOLERABLE / TRIG_HLT_IDT_BSPOT_INVALID_STATUS /
 	# ID_IBL_TRACKCOVERAGE_SEVERE / PIXEL_IBL_DISABLED  (35 runs, 522041-523437).
-	GRL = ["physics_HI2026_50ns_noIBL.xml"]
+	# UPDATED 2026-10-12 (analysis decision): the _updated GRL additionally removes runs
+	# 522384 + 522408 entirely, run 522336 LB 344-521 and run 522355 LB >= 448
+	# (33 runs).  The existing 2026 skim was made with the original GRL; the analysis
+	# applies the same removals at event level (PbPbEventSelConfig.h PbPbIsBadRunLB).
+	GRL = ["physics_HI2026_50ns_noIBL_updated.xml"]
 	# data26_hi Pb+Pb HardProbes AOD, run 522474 lb0122 (inside GRL range 117-224),
 	# 1.487 GB / 731 events, complete replica at BNL-OSG2_DATADISK.  Local-test default
 	# only; the grid job always overrides this through --filesInput=%IN.

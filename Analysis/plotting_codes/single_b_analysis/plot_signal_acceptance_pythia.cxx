@@ -16,6 +16,13 @@ public:
             "pythia_sig_accept_pair_pt_in_eta_subplots.png",
             "Pythia 8.3 pp #sqrt{s_{NN}} = 5.36 TeV",
             "Truth single-b #rightarrow #mu^{+}#mu^{-}");
+
+        // pT_bins_120 is NOT nested with the coarse pair-pT axis -> eta view on the default axis only.
+        if (!use_pt_bins_120)
+            DrawAcceptanceEtaByPt(
+                "pythia_sig_accept_pair_eta_in_pt_subplots.png",
+                "Pythia 8.3 pp #sqrt{s_{NN}} = 5.36 TeV",
+                "Truth single-b #rightarrow #mu^{+}#mu^{-}");
     }
 };
 

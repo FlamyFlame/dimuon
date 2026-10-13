@@ -53,7 +53,8 @@ p_T > 4.5 GeV & |η| < 2.4 & WP (NTuple stage), m_μμ ∈ (1.08, 2.9), pair p_T
                  / N[ truth pair in T ]
 
     T = truth SIGNAL region, NO gap cut of any kind:
-        single-b OS pair (`from_same_b`), truth p_T > 4.5 GeV & |truth η| < 2.4 both muons
+        single-b OS pair (`from_same_b`) [2026-10-06: ALL truth OS pairs, any origin —
+        `pair_reco_eff_origin_test_and_views.md` D3], truth p_T > 4.5 GeV & |truth η| < 2.4 both muons
         (NTuple-stage truth fiducial), truth m_μμ ∈ (1.08, 2.9), truth pair p_T > 9 GeV.
 
 Binned in TRUTH (pair p_T, η^pair, ΔR) on the canonical coarse axes

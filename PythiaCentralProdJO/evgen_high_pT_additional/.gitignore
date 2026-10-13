@@ -1,0 +1,9 @@
+source/athena/
+build/
+build_*/
+compile.log
+local_test/*/
+!local_test/check/
+local_test/driver.log
+grid/stage/
+grid/*.log

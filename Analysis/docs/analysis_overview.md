@@ -157,15 +157,30 @@ w⁻¹ = ε_trig^pair · ε_reco^pair(pair p_T, pair η, ΔR)
   captures that correlation. In central Pb+Pb the efficiency is genuinely lower
   and centrality-dependent (real occupancy effect from the underlying event), not
   a bookkeeping artifact.
-  **Definition (2026-09-17):** ε_reco^pair(cell) = N[truth single-b pair in the truth signal
-  region, both muons reconstructed, WP, and the reconstructed pair passing the full data
-  selection *including the detector-gap cuts*] / N[truth single-b pair in the truth signal
-  region — signal cuts only, **no gap cut**]. It thus **includes the gap-cut acceptance**: a
+  **Definition (2026-09-17; pair category 2026-10-06):** ε_reco^pair(cell) = N[truth
+  opposite-sign pair (any origin) in the truth signal region, both muons reconstructed, WP, and
+  the reconstructed pair passing the full data selection *including the detector-gap cuts*] /
+  N[truth opposite-sign pair in the truth signal region — signal cuts only, **no gap cut**].
+  All truth OS pairs, not only `from_same_b`: ε_reco is a detector property of the pair
+  kinematics, and the origin test found no cell-level difference between single-b and other
+  OS pairs in populated cells (+18 % MC statistics;
+  `docs/tracking/pair_reco_eff_origin_test_and_views.md` R1). It thus **includes the gap-cut acceptance**: a
   truth pair reconstructed into a gap window or across |η^pair| = 2.2 is an inefficiency. A
   truth pair outside the measured η^pair range (|η^pair| ≥ 2.2 — the truth fiducial edge of
   the measurement, see §2) reconstructed inside it is bin migration for the detector-response
   step, not part of ε_reco
   (`docs/tracking/pair_reco_eff_gap_acceptance.md`).
+
+**Signal acceptance A_sig (2026-10-05/06, `docs/tracking/signal_acceptance_mass_window.md`).**
+The result is an unfolded cross-section in truth pair p_T > 9 GeV, |truth η^pair| < 2.2 — these
+two cuts DEFINE the measured range and are never acceptance-corrected. TARGET (decided 2026-10-06):
+A_sig(pair p_T, η^pair) = N[truth single-b OS in the measured range, both muons p_T > 4.5 GeV &
+|η| < 2.4, **truth mass window**] / N[truth single-b OS in the measured range, both muons |η| < 2.5
+(ID coverage), **no muon-p_T cut, all masses**], applied LAST to the unfolded yield. It contains NO
+gap cut (that acceptance is in ε_reco^pair above). The single-muon part needs a NEW private Pythia
+truth sample without a muon-p_T generator filter (central samples filter at 3.7 GeV, the old
+private one at 3.5 GeV) — NOT yet produced; currently only the mass-window factor exists (interim):
+Pythia integrated A_sig^mass = 0.749 (≈0.76 → 0.71 with pair p_T, flat in η^pair); POWHEG (bb, no-resonance-cut NTuple) 0.513 — the difference is the B → J/ψ X → μμ fraction of single-b pairs (31 % POWHEG vs 3 % Pythia), an OPEN generator/signal-definition question (tracking doc R4).
 
 **(c) Detector response / unfolding.** Momentum response and bin migration are
 characterized from **Pythia fullsim** and used to unfold the measured spectra to

@@ -217,6 +217,12 @@
             "binning": "dr_bins_reco_effcy"
         },
         {
+            "hist_name": "truth_minv_effcy",
+            "var_name": "truth_minv",
+            "title": "m_{#mu#mu}^{truth} [GeV]",
+            "binning": "minv_bins_reco_effcy"
+        },
+        {
             "hist_name": "truth_dr_zoomin_ppbin",
             "var_name": "truth_dr",
             "title": "#DeltaR^{truth}",

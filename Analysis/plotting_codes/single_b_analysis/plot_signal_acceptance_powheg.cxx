@@ -16,6 +16,13 @@ public:
             "powheg_sig_accept_pair_pt_in_eta_subplots.png",
             "POWHEG pp #sqrt{s_{NN}} = 5.36 TeV",
             "Truth single-b #rightarrow #mu^{+}#mu^{-}");
+
+        // pT_bins_120 is NOT nested with the coarse pair-pT axis -> eta view on the default axis only.
+        if (!use_pt_bins_120)
+            DrawAcceptanceEtaByPt(
+                "powheg_sig_accept_pair_eta_in_pt_subplots.png",
+                "POWHEG pp #sqrt{s_{NN}} = 5.36 TeV",
+                "Truth single-b #rightarrow #mu^{+}#mu^{-}");
     }
 };
 
@@ -25,7 +32,9 @@ void plot_signal_acceptance_powheg(const std::string& input_file = "",
 {
     std::string in_path = input_file;
     if (in_path.empty()) {
-        in_path = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/histograms_powheg_truth.root";
+        // bb NO-resonance-cut truth: A_sig's denominator needs ALL masses, and the nominal POWHEG
+        // truth NTuple is resonance-vetoed (docs/tracking/signal_acceptance_mass_window.md R2).
+        in_path = "/usatlas/u/yuhanguo/usatlasdata/powheg_full_sample/histograms_powheg_truth_bb_no_data_resonance_cuts.root";
     }
 
     SignalAcceptancePlotterPowheg pl(in_path);   // DEFAULT: pT_bins_150 -> powheg/

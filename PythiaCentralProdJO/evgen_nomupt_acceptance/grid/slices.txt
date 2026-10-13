@@ -1,0 +1,8 @@
+# cfg            evts/job nJobs seedBase   (plan: signal_acceptance_mass_window.md Step 9d, approved 2026-10-07)
+run_pTH5_8          1   200  210000
+run_pTH8_14        20   500  220000
+run_pTH14_24      200   500  230000
+run_pTH24_40      500   200  240000
+run_pTH40_70     1000   100  250000
+run_pTH70_125    1000   100  260000
+run_pTH125_300   1000   100  270000

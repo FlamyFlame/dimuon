@@ -203,7 +203,11 @@ e. **Correction ordering (CORRECTED 2026-07-01, per user — REVERSES the 2026-0
    ordering. **Current-code status (RDF, 2026-07-01):** template-fit histograms are now
    trigger-only at reco (the fit input is correct); reco-eff/unfolding after-fit correction
    of N_S is future work (needs the real 3D pair ε_reco + unfolding, roadmap Q4/task_05).
-f. **Signal acceptance (origin-specific, AFTER the fit).** A_sig(pair pT, pair η)
+f. **⚠ SUPERSEDED DEFINITION (2026-10-05/06):** A_sig now = truth mass window AND single-muon
+   p_T > 4.5 / |η| < 2.4 acceptance in the measured range (truth pair pT>9, |η^pair|<2.2), target
+   muons |η|<2.5 with no p_T cut; no gap cut, no ΔR, no resolution term — authoritative definition in
+   `signal_acceptance_mass_window.md` §2. The text below is historical.
+   **Signal acceptance (origin-specific, AFTER the fit).** A_sig(pair pT, pair η)
    = P(a truth single-b dimuon passes the signal selection), from signal MC truth
    (Pythia/Powheg). It is signal-only, so it is applied to the **extracted signal
    yield only**, after the fit: `N_sig(X) = N_S^fit(X) / A_sig(X)`. Build it on a

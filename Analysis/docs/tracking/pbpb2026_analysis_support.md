@@ -869,6 +869,67 @@ per-year plot themselves and decide whether to investigate — nothing opened.
 - Handed to the user for the experts. **Nothing changed in code or selection.** The combined
   23+24+25+26 crossx on disk includes these two runs as cut 5 leaves them.
 
+### 2026-10-08 — Step 16: cut-4 run hunt, LB scan of 522336/522355, ZDC timing vs vertex z (evidence only)
+
+Code: `plotting_codes/event_selection/fill_pbpb_evsel_run_lb_diag.cxx` (one pass per skim part, cuts 1-5
+mirror `PbPbExtras::PassEventSel`; hadd → `~/usatlasdata/dimuon_data/pbpb_20{25,26}/evsel_run_lb_diag_pbpb_20YY.root`)
+and `plot_pbpb_evsel_run_lb_diag.cxx` → `plots/single_b_analysis/event_selection/pbpb_20YY/evsel_run_lb_diag/`.
+`/review-plot` APPROVED at iteration 5 (log `.claude/logs/review-plot-20261008-164419-pbpb26-evsel-run-lb-diag.md`).
+Nothing changed in any cut, run list or luminosity.
+
+1. **Cut-4 sideband = the cut-5 low-band runs.** Cut-4 failure (after cuts 1-3): 522384 5.184 %, 522408 4.886 %,
+   every other run 0.055-0.104 % (median 0.062 %); 84.6 % of all 2026 cut-4 failures (872 706 / 1 031 119) come
+   from those two runs (92.7 % in 0.45 < frac < cut-4 line, ≥98.7 % at N_trk^total 2-4 k). Mechanism: their
+   N_trk^HItight/N_trk^total band bends down at N_trk^total ≳ 3500 and crosses the µ−5σ line. The rest is a
+   run-uniform ~0.06 % population (scattered + curved low-N_trk band). Caveat: the figure axis N_trk^total ≤ 5000
+   (= canonical cut-4 figure) leaves ~1.9 % of a normal run's events in overflow; per-run overflow counts in
+   `cut4_cut5_per_run_pbpb_2026.txt`; the cut-4 TGraph is defined for 100-4900 only (clamped above).
+2. **522336 / 522355 DO carry the second N_trk^HItight/FCal band in LB blocks** (this corrects the 2026-09-17
+   statement that both are "nominal" — that used the below-cut-5-edge fraction, which the low band mostly
+   escapes; the reviewer's 18.5 %/13.5 % was right). f_low = fraction of FCal > 1 TeV events with
+   N_trk^HItight/FCal < 530 TeV⁻¹ (reference runs 1.89 %): 522336 **LB 344-520** f_low 75.5 % (mean ratio ≈ 515
+   vs 587 TeV⁻¹), sharp onset at LB 344 (LB 343: 2.6 %), recovery by LB 522 (LB 521 not in the skim);
+   522355 single-band drift **LB 445-460** (ratio 584 → 570, f_low 5.5 %) then **LB 461-649** (end of run)
+   f_low 73.3 %. Per-BCID f_low flat → not bunch-dependent. Sequence 522336 (LB 344-520) → 522355 (LB 461-end)
+   → 522384, 522408 (whole runs, ratio ≈ 470, worse) looks like one recurring/worsening tracking condition.
+   Cut 4 is blind to the 522336/522355 blocks (0.054 %/0.047 % vs 0.070 %/0.065 % in their other LBs): there
+   N_trk^HItight and N_trk^total drop together; cut 5 rejects only ~0.1 %. Onset LBs 522336 LB 344/345 and
+   522355 LB 461/462 hold only tens of events and fail cut 4 at 78-100 % (522384/408 signature).
+   Side observations: f_low sawtooth in good LBs (slow rise to ~3 %, drops near LB ~178/268/360);
+   last three runs 523372/523418/523437 at f_low 3.1-3.6 % (vs 1.5-1.9 %) without a cut-5 rise.
+3. **ZDC t_A vs t_C and vertex z.** The analysis' only vertex-z requirement is the skim's |z(PV0)| < 250 mm
+   (TrigRates.cxx CleaningCuts, MaxZvtx = 250 in run_25hi/run_26hi TrigRates_CA.py); no NTuple/RDF Pb+Pb stage
+   cuts vtx_z → a literal "before" panel cannot be made from the skims (needs an AOD re-skim with MaxZvtx < 0).
+   Moreover the stored z(PV0) is truncated upstream at ≈ −210/+200 mm (2026: 7 events in [−220,−210) vs 2822
+   in [−210,−200); 1 in [200,210) vs 2658 in [190,200); same in 2025) → the 250 mm cut never acts.
+   2026 secondary cluster (t_A ∈ [1,2], t_C ∈ [−0.6,1] ns; 2.59 M events = 1.1 % of the main box): ⟨z⟩ = −9.5 mm,
+   RMS 46.6 vs main −1.8/47.0 → in-time collisions at nominal z, NOT main–satellite collisions (those would sit
+   at c·Δt/2 ≈ 200 mm) → not removable by any vertex-z cut; looks like an A-side ZDC timing feature. Cut 2
+   (|t| < 1.5 ns) keeps roughly half of it. 2025 has no +1.3 ns cluster; instead t_A ≈ −1.4 ns shoulder (12.4 M)
+   and t_A ≈ −3 ns blob (0.77 M), also at nominal z. Satellite (±5, ±5) ns clusters: nominal z, RMS ≈ 37 mm.
+
+### 2026-10-10 — Step 16b: luminosity weight of 522336 / 522355 and of their bad-LB blocks (user decision input)
+
+Source: `IntNotes/data/luminosity/pbpb_2026/lumitable_pbpb_26_HLT_mu4.csv` (`Prescale Corrected`, 35 runs,
+2623.15 µb⁻¹, mean 74.95 µb⁻¹/run, median 91.8). No per-LB luminosity on disk → bad-LB share estimated by the
+HLT_mu4 event fraction (HLT_mu4 unprescaled; per-run (N/N_tot)/(L/L_tot) = 0.993-1.007 for all 35 runs,
+incl. 522384/522408 = 0.999/1.000, so the tracking condition does not alter the rate per luminosity).
+LB-count fraction is larger (lumi decays through the fill) and is not used.
+- 522336: 112.99 µb⁻¹ = 4.31 % of 2026; 1.51 × mean (1.23 × median); LB 344-520 = 22.8 % of the run's
+  events → ≈ 25.7 µb⁻¹.
+- 522355: 97.85 µb⁻¹ = 3.73 %; 1.31 × mean (1.07 × median); LB 461-649 = 17.0 % → ≈ 16.6 µb⁻¹
+  (LB 445-649 incl. drift: 18.5 % → ≈ 18.1 µb⁻¹).
+- Full-run drop: 210.8 µb⁻¹ = 8.04 % of 2026; LB-only drop: ≈ 42.4 µb⁻¹ = 1.6 % (43.8 incl. drift).
+  (522384+522408 whole runs: 170.8 µb⁻¹ = 6.51 %, separate.)
+
+### 2026-10-11 — Step 16c: 522355 cut at LB 440 (user: first IBL error ~LB 440, never fixed in the run)
+
+Dropping LB >= 441 of 522355: 19.06 % of the run's HLT_mu4 events ≈ 18.65 µb⁻¹ = 0.71 % of 2026 (LB >= 440:
+19.12 %, 18.70 µb⁻¹). Kept LB <= 440: f_low 2.26 % (reference runs 1.89 %; run's other LBs before the problem
+show the same ~2-3 % sawtooth); dropped part f_low 65.9 %. LB 440-444 themselves are normal (f_low 2.3 %,
+ratio 584-585), so the IBL error is consistent with the drift starting at LB 445. Same event-fraction luminosity
+proxy as Step 16b.
+
 ## Results & Observations
 
 ### Open questions for the user (none blocked the work; all recorded)
@@ -925,6 +986,11 @@ outside the requested 2026 scope and is a user decision.
 
 ## Latest Stage
 
+**2026-10-08 — Step 16 DONE (evidence delivered, see Progress entry "Step 16").** Nothing changed in cuts,
+runs or luminosity. Open for the user / experts: run/LB treatment of 522336 LB 344-520, 522355 LB 445/461-649,
+522384, 522408 (eLog cross-check of LB boundaries); whether the 2026 ZDC t_A ≈ +1.3 ns cluster needs action.
+
+### (previous) 
 **2026-09-17 — AWAITING THE USER / EXPERTS.** Step 14 done (all pipelines rc=0; combined
 23+24+25+26 crossx + sanity plots on disk). Step 15 `/review-plot` FAIL on one PHYSICS-RESULTS item:
 2026 runs 522384 + 522408 (6.51 % of 2026 events and luminosity) have ≈ 20 % fewer HItight tracks

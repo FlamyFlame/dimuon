@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -172,6 +174,9 @@ protected:
     void InitInput_PythiaCore();
     void InitInputPrivate_PythiaCore();
     void InitInputCentrProd_PythiaCore();
+    void InitInputTruthExternal_PythiaCore();          // truth_input_override mode only
+    void BindTruthPairBranches_PythiaCore(TChain* ch); // non-private truth-pair branches
+    bool IsTruthExternalInput() const { return !truth_input_override.empty(); }
     void InitInputFullsim_PythiaCore();
     void SetInputOutputFilesFromBatch_PythiaCore();
     void InputSanityCheck_PythiaCore();
@@ -337,6 +342,52 @@ public:
     // would bias any efficiency built from the output. See
     // docs/tracking/mc_trigger_efficiency.md (Physics Procedure + R1/R2).
     bool store_mc_trigger = false;
+
+    // ---- EXTERNAL truth-only input (TRUTH path only; opt-in; all defaults = nominal) ----
+    // Runs the SAME truth processing (pair building, PassCuts fiducial pT>4.5 GeV |eta|<2.4,
+    // pair kinematics, ancestry tracing, output tree format) on truth-only NTUPs OTHER than the
+    // central nPDF sample (same SkimCode TruthTrigRates.py format), e.g. new test samples that
+    // have no AMI record yet. The ONLY differences from a nominal truth run are:
+    //   input file source, output dir + name, and weight = 1 with the AMI read skipped.
+    //   truth_input_override      : TRUTH0 NTUP file(s) of ONE pT-hat slice = kn_batch (the
+    //                               constructor batch_num; kinRanges unchanged). A glob and/or a
+    //                               list separated by spaces/commas. Chained as the pp slot (beam 0).
+    //   truth_output_dir_override : output directory (required with truth_input_override)
+    //   truth_output_label        : output tag (required) ->
+    //                               muon_pairs_pythia_truth_<label>_kn<N>_no_data_resonance_cuts.root
+    //   truth_raw_counts          : per-pair weight = 1 exactly, AMI read + DSID guard SKIPPED;
+    //                               meta_tree_out records nproc_kin<N>_beam0 (events processed).
+    // Both flags are REQUIRED together: raw counts without the override would silently alter a
+    // nominal run; the override without raw counts would weight a NEW dataset with the central
+    // sample's AMI cross-sections (AMI rule, docs/ami_weights.md). Either case THROWS.
+    std::string truth_input_override;
+    std::string truth_output_dir_override;
+    std::string truth_output_label;
+    bool truth_raw_counts = false;
+
+    // ---- EXTERNAL input, PRODUCTION-WEIGHTED (the alternative to truth_raw_counts) ----
+    // For a PRIVATE Athena production (EVNT -> TRUTH0 -> SkimCode NTUP, e.g. the no-muon-pT-filter
+    // signal-acceptance sample, docs/private_pythia_sample_notes.md, signal_acceptance_mass_window.md D6):
+    //   truth_external_sigma_eff_nb  : sigma * eps_filt [nb] of THIS production's pT-hat slice, from its
+    //                                  OWN Gen_tf log.generate (never another dataset's AMI numbers).
+    //                                  per-pair weight = sigma_eff / N_processed [nb] -- the same form and
+    //                                  unit as the nominal AMI weight, so slices hadd to a sigma-weighted file.
+    //   truth_external_weight_source : provenance (required with it); stored in the output (TNamed).
+    //   truth_external_kin_edges     : optional pT-hat slice edges replacing kinRanges (kn_batch indexes
+    //                                  them); labels/bookkeeping only.
+    // Exactly ONE of truth_raw_counts / truth_external_sigma_eff_nb must be set with truth_input_override.
+    double truth_external_sigma_eff_nb = -1.;
+    std::string truth_external_weight_source;
+    std::vector<float> truth_external_kin_edges;
+    double meta_external_sigma_eff_nb = -1.;   // written to meta_tree_out in the weighted mode
+
+    // ---- TARGET truth muon fiducial (signal acceptance, signal_acceptance_mass_window.md PD4/D7) ----
+    // false (default) = nominal PassCuts: both truth muons pT > 4.5 GeV and |eta| < 2.4.
+    // true = the A_sig TARGET muon phase space: both |eta| < 2.5 (ID coverage), NO pT cut; the muon cuts
+    // then live in the A_sig numerator (Utilities/SignalAcceptanceDefinition.h). Only valid on EXTERNAL
+    // input from a sample WITHOUT a muon-pT generator filter (a filtered sample truncates the target
+    // denominator) -- refused on nominal / private / fullsim. Output names carry "_muon_fid_target".
+    bool truth_muon_fiducial_target = false;
 
     explicit PythiaAlgCoreT(int batch_num_input, bool useLocal_input = false)
         : batch_num(batch_num_input)

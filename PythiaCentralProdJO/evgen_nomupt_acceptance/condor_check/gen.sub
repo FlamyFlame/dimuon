@@ -1,0 +1,8 @@
+executable = run_gen_condor.sh
+arguments  = $(cfg) $(n) $(seed)
+output     = logs/$(cfg)_$(seed).out
+error      = logs/$(cfg)_$(seed).err
+log        = logs/gen.log
+request_memory = 4GB
+getenv = False
+queue cfg,n,seed from jobs.txt

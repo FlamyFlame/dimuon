@@ -58,8 +58,15 @@ void RDFBasedHistFillingPowheg::SetIOPathsHook(){
         mctype = "truth";
     }
 
-    for (std::string mc_mode : {"bb", "cc"}){
-        const std::string fpath = powheg_dir + mc_mode_to_data_subdir_map[mc_mode][mctype] + mc_mode_to_mpair_infile_name_map[mc_mode][mctype];
+    if (!with_data_resonance_cuts && mctype != "truth")
+        throw std::runtime_error("RDFBasedHistFillingPowheg: with_data_resonance_cuts=false is truth-only");
+    const std::vector<std::string> mc_modes = with_data_resonance_cuts
+        ? std::vector<std::string>{"bb", "cc"} : std::vector<std::string>{"bb"};
+    for (const std::string& mc_mode : mc_modes){
+        std::string fname = mc_mode_to_mpair_infile_name_map[mc_mode][mctype];
+        if (!with_data_resonance_cuts)
+            fname.insert(fname.rfind(".root"), "_no_data_resonance_cuts");
+        const std::string fpath = powheg_dir + mc_mode_to_data_subdir_map[mc_mode][mctype] + fname;
         if (gSystem->AccessPathName(fpath.c_str())) {
             std::cout << "[RDFPowheg] Skipping missing input file: " << fpath << std::endl;
         } else {
@@ -77,6 +84,7 @@ void RDFBasedHistFillingPowheg::SetIOPathsHook(){
                                                 : ( is_fullsim  ? "_fullsim_pp" + run_year_str
                                                                 : "_truth");
 
+    if (!with_data_resonance_cuts) dt_suffix += "_bb_no_data_resonance_cuts";
     output_file = powheg_dir + "histograms_powheg" + dt_suffix + ".root";
 }
 

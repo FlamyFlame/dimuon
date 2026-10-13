@@ -21,7 +21,7 @@
 #include "PairRecoEffDefinition.h"
 
 // =================================================================================================
-// PairRecoEffEvaluator -- the single-b PAIR reconstruction efficiency
+// PairRecoEffEvaluator -- the PAIR reconstruction efficiency (all truth OS pairs since 2026-10-06)
 // eps_reco(pair pT, pair eta, dR), measured in the pp24-condition Pythia fullsim FULL sample and
 // applied per pair in the cross-section.
 //
@@ -34,10 +34,10 @@
 // DEFINITION of the histogram this reads (built by
 // plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C from the RDF hist-filling output):
 //
-//   eps_reco(cell) =  N[ single-b OS pair in the TRUTH signal region, both muons reco-matched, pair
+//   eps_reco(cell) =  N[ truth OS pair (any origin) in the TRUTH signal region, both muons reco-matched, pair
 //                        passes the WP, and the RECO pair passes the DATA signal selection incl.
 //                        the fiducial gap windows on RECO q*eta and RECO |eta^pair| < 2.2 ]
-//                  /  N[ single-b OS pair in the TRUTH signal region -- mass window and pair pT
+//                  /  N[ truth OS pair (any origin) in the TRUTH signal region -- mass window and pair pT
 //                        ONLY, NO gap cut on the truth leg ]
 //
 // binned in TRUTH kinematics and weighted by the MC event weight. The detector-gap cuts are
@@ -108,6 +108,15 @@ struct PairRecoEffEvaluator {
                                            "plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C "
                                            "from a freshly filled fullsim histogram file (found: "
                                          + (def ? def->GetTitle() : "none") + ")");
+            // Pair category (all truth OS pairs since 2026-10-06; single-b before). A product
+            // built from the other category has identical histogram names, so only this tells.
+            auto* cat = dynamic_cast<TNamed*>(f->Get(PairRecoEffDefinition::CategoryKey()));
+            if (!cat || std::string(cat->GetTitle()) != PairRecoEffDefinition::CategoryValue())
+                throw std::runtime_error("PairRecoEffEvaluator: " + path + " carries "
+                                         + (cat ? "a DIFFERENT" : "NO") + " '"
+                                         + PairRecoEffDefinition::CategoryKey()
+                                         + "' marker -- rebuild it with "
+                                           "plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C");
         }
         const std::string key = "h_pair_reco_eff_" + wp;
         auto* h = dynamic_cast<TH3D*>(f->Get(key.c_str()));

@@ -1,7 +1,7 @@
-// r-tag sanity comparison, HIJING overlay Pb+Pb 2024 conditions (r17864) vs Pb+Pb 2023
-// conditions (r17618), SAME pT-hat slice 125-300 GeV (the only slice the r17864 test sample
+// r-tag sanity comparison, HIJING overlay Pb+Pb 2024 conditions vs Pb+Pb 2023
+// conditions (r17618), SAME pT-hat slice 125-300 GeV (the only slice the pbpb24 test sample
 // has), both processed by the SAME ntuple-processing code on the same day:
-//   r17864 : pythia_fullsim_hijing_overlay_test_sample/            (OVERLAY_YEAR=24 run scripts)
+//   pbpb24 : pythia_fullsim_hijing_overlay_test_sample/            (OVERLAY_YEAR=24 run scripts)
 //   r17618 : ..._test_sample_pbpb23/r17618_pTH125_300_run/          (single-slice override run,
 //            NTupleProcessingCode/run_pythia_fullsim_overlay_pbpb23_pTH125_300_slice.sh)
 // Tracking doc: docs/tracking/hijing_overlay_pbpb24_test_sample_skim.md, verification round.
@@ -18,14 +18,18 @@
 //   detresp  : (pT_reco - pT_truth)/pT_truth of WP muons, same single-muon selection as trigeff.
 //   samb     : from_same_b fraction of opposite-sign reco pairs, pair_pass_<WP>, table only.
 // CENTRALITY: the nominal 0-5 % (and 5-10 %) FCal bins are kept on purpose (user decision
-// 2026-09-16) although the r17864 FCal is broken -- only 4.2 % of its events land in 0-5 %.
+// 2026-09-16). NOTE the history: under r17864 this comparison was NOT STUDIABLE (user ruling
+// 2026-09-17) because its FCal was broken, so its "0-5 %" was a different event population than
+// r17618's -- only 4.2 % of its events landed in 0-5 % at all. r17913 restores the FCal (R11/R12:
+// 0 % negative events, ~all events in 0-10 %), which is what makes the centrality-binned rows
+// meaningful again.
 // Both samples are single-slice, so ev_weight is one constant per sample; it is applied anyway
 // (it is what the nominal chain applies).
 //
-//   root -l -b -q 'plot_r17864_vs_r17618_pTH125_300.cxx+("recoeff")'
-//   root -l -b -q 'plot_r17864_vs_r17618_pTH125_300.cxx+("trigeff")'
-//   root -l -b -q 'plot_r17864_vs_r17618_pTH125_300.cxx+("detresp")'
-//   root -l -b -q 'plot_r17864_vs_r17618_pTH125_300.cxx+("samb")'
+//   root -l -b -q 'plot_overlay_rtag_effcy_comparison.cxx+("recoeff")'
+//   root -l -b -q 'plot_overlay_rtag_effcy_comparison.cxx+("trigeff")'
+//   root -l -b -q 'plot_overlay_rtag_effcy_comparison.cxx+("detresp")'
+//   root -l -b -q 'plot_overlay_rtag_effcy_comparison.cxx+("samb")'
 // Second argument: useTight (default true = nominal Tight WP; false = Medium, own subdir).
 #include <TFile.h>
 #include <TH1D.h>
@@ -58,10 +62,19 @@ namespace {
     const std::string TRIG_23    = B23 + "_mc_trig_r17618pTH125_300_single_muon.root";
     const std::string PAIR_24    = B24 + ".root";
     const std::string PAIR_23    = B23 + "_r17618pTH125_300.root";
-    std::string OUTDIR = D24 + "plots/r17864_rtag_sanity/";
+    // The 2024-conditions r-tag under test. The product PATHS above do not carry it (they are
+    // keyed on the conditions YEAR), so this constant is the single place naming the r-tag -- it
+    // drives the label, the output directory and every output file name. Keep it in step with
+    // NEW_RTAG of plot_overlay_rtag_event_level.cxx: both describe the NTUP currently sitting
+    // under the canonical (configuration-keyed) name in the sample dir.
+    const std::string RTAG24 = "r17913";
+    const std::string RTAG23 = "r17618";
+    std::string OUTDIR = D24 + "plots/" + RTAG24 + "_rtag_sanity/";
 
-    const std::string L24 = "Pb+Pb 2024 conditions (r17864)";
-    const std::string L23 = "Pb+Pb 2023 conditions (r17618)";
+    const std::string L24 = "Pb+Pb 2024 conditions (" + RTAG24 + ")";
+    const std::string L23 = "Pb+Pb 2023 conditions (" + RTAG23 + ")";
+    // common output-file suffix: _<new r-tag>_vs_<old r-tag>
+    const std::string VS = "_" + RTAG24 + "_vs_" + RTAG23;
     const int C24 = kRed + 1, C23 = kBlue + 1;
 
     std::string wp_col = "pass_tight", wp_label = "Tight";
@@ -71,7 +84,8 @@ namespace {
     const std::vector<CtrBin> ctr_bins = { {0, 5, "ctr0_5", "0-5%"}, {5, 10, "ctr5_10", "5-10%"} };
 
     // reco-efficiency pT axis = the canonical coarse single-muon binning (ParamsSet, never retyped):
-    // the r17864 0-5 % bin holds only ~750 truth muons, so the coarse axis is the readable one.
+    // the pbpb24 single-slice 0-5 % bin holds only ~1 k truth muons, so the coarse axis is the
+    // readable one.
     std::vector<double> coarse_pt_edges() { ParamsSet pms; return pms.single_mu_pt_coarse_bins; }
     // Step-1 trigger-efficiency binning, read from ParamsSet exactly as FillMCTrigEffHists does
     std::vector<double> trig_pt_edges() {
@@ -91,7 +105,8 @@ namespace {
     // Efficiency with Clopper-Pearson 68.3 % intervals (TEfficiency::ClopperPearson on the
     // EFFECTIVE entries N_eff = (sum w)^2 / sum w^2, k_eff = eps * N_eff), symmetrised as the larger
     // of the two half-widths. TH1::Divide(...,"B") gives a ZERO error for a bin at eps = 1 (21/21
-    // muons at 11-12 GeV in the r17864 0-5 % sample), which made its ratio read as ~8 sigma; the
+    // muons at 11-12 GeV in the r17864 0-5 % sample, when that sample had only 4.2 % of its
+    // events there), which made its ratio read as ~8 sigma; the
     // CP interval is the honest small-N error. Bins whose denominator has < 10 effective entries
     // are blanked (same floor as the reference macro).
     TH1D* make_eff(ROOT::RDF::RNode den, const std::string& num_sel, const std::string& var,
@@ -198,11 +213,12 @@ void plot_recoeff() {
         TH1D* e23 = make_eff(n23, wp_col, "truth_pt", reco_pt_edges, ("reco23_" + ctr.suffix).c_str());
         style_pts(e24, C24, 20); style_pts(e23, C23, 24);
         const double N24 = *n24.Count(), N23 = *n23.Count();
-        std::printf("recoeff %s: truth muons in bin: r17864 %.0f, r17618 %.0f\n", ctr.label.c_str(), N24, N23);
+        std::printf("recoeff %s: truth muons in bin: %s %.0f, %s %.0f\n", ctr.label.c_str(),
+                    RTAG24.c_str(), N24, RTAG23.c_str(), N23);
         draw_eff_canvas(e24, e23, reco_pt_edges,
                         "single-muon reconstruction efficiency (" + wp_label + ")", "truth p_{T} [GeV]",
                         {"HIJING overlay, #hat{p}_{T} 125-300 GeV", "FCal centrality " + ctr.label + ", q#eta-integrated"},
-                        OUTDIR + "single_muon_reco_effcy_vs_pt_" + ctr.suffix + "_r17864_vs_r17618.png");
+                        OUTDIR + "single_muon_reco_effcy_vs_pt_" + ctr.suffix + VS + ".png");
         delete e24; delete e23;
     }
 }
@@ -221,15 +237,16 @@ void plot_trigeff() {
     style_pts(e24, C24, 20); style_pts(e23, C23, 24);
     const double N24 = *n24.Count(), N23 = *n23.Count();
     const double P24 = *n24.Filter("passmu4").Count(), P23 = *n23.Filter("passmu4").Count();
-    std::printf("trigeff 0-5%%: denominator muons r17864 %.0f (mu4 %.0f, %.3f), r17618 %.0f (mu4 %.0f, %.3f)\n",
-                N24, P24, P24 / N24, N23, P23, P23 / N23);
+    std::printf("trigeff 0-5%%: denominator muons %s %.0f (mu4 %.0f, %.3f), %s %.0f (mu4 %.0f, %.3f)\n",
+                RTAG24.c_str(), N24, P24, P24 / N24,
+                RTAG23.c_str(), N23, P23, P23 / N23);
     draw_eff_canvas(e24, e23, edges,
                     "single-muon mu4 efficiency (" + wp_label + ")", "p_{T} [GeV]",
                     {"HIJING overlay, #hat{p}_{T} 125-300 GeV", "FCal centrality 0-5%, q#eta-integrated"},
-                    OUTDIR + "single_muon_mu4_effcy_vs_pt_ctr0_5_r17864_vs_r17618.png");
+                    OUTDIR + "single_muon_mu4_effcy_vs_pt_ctr0_5" + VS + ".png");
     delete e24; delete e23;
     // same efficiency on the canonical COARSE single-muon axis (ParamsSet::single_mu_pt_coarse_bins):
-    // with ~420 r17864 muons in 0-5 % the Step-1 axis leaves most bins below the 10-entry floor.
+    // the Step-1 axis leaves most bins below the 10-entry floor on a single 10 k-event slice.
     const std::vector<double> cedges = coarse_pt_edges();
     TH1D* c24 = make_eff(n24, "passmu4", "pt", cedges, "trig24_coarse");
     TH1D* c23 = make_eff(n23, "passmu4", "pt", cedges, "trig23_coarse");
@@ -237,7 +254,7 @@ void plot_trigeff() {
     draw_eff_canvas(c24, c23, cedges,
                     "single-muon mu4 efficiency (" + wp_label + ")", "p_{T} [GeV]",
                     {"HIJING overlay, #hat{p}_{T} 125-300 GeV", "FCal centrality 0-5%, q#eta-integrated"},
-                    OUTDIR + "single_muon_mu4_effcy_vs_pt_coarse_ctr0_5_r17864_vs_r17618.png");
+                    OUTDIR + "single_muon_mu4_effcy_vs_pt_coarse_ctr0_5" + VS + ".png");
     delete c24; delete c23;
 }
 
@@ -258,8 +275,9 @@ void plot_detresp() {
     auto g24 = n24.Histo1D({"deta24", "", 60, -0.006, 0.006}, "deta", "ev_weight");
     auto g23 = n23.Histo1D({"deta23", "", 60, -0.006, 0.006}, "deta", "ev_weight");
     const double N24 = *n24.Count(), N23 = *n23.Count();
-    std::printf("detresp 0-5%%: muons r17864 %.0f  dpt/pt mean %+.4f rms %.4f | r17618 %.0f  mean %+.4f rms %.4f\n",
-                N24, h24->GetMean(), h24->GetRMS(), N23, h23->GetMean(), h23->GetRMS());
+    std::printf("detresp 0-5%%: muons %s %.0f  dpt/pt mean %+.4f rms %.4f | %s %.0f  mean %+.4f rms %.4f\n",
+                RTAG24.c_str(), N24, h24->GetMean(), h24->GetRMS(),
+                RTAG23.c_str(), N23, h23->GetMean(), h23->GetRMS());
     TCanvas c("c", "", 1600, 700); c.Divide(2, 1);
     // `scale` = unit of the printed mean/RMS (1 for pT, 1e-3 for eta), `unit` its label
     auto panel = [&](int ipad, TH1* a, TH1* b, const char* xt, double bw_unit, double scale, const char* unit) {
@@ -283,7 +301,7 @@ void plot_detresp() {
     };
     panel(1, h24.GetPtr(), h23.GetPtr(), "(p_{T}^{reco} - p_{T}^{truth}) / p_{T}^{truth}", 0.005, 1e-2, " %");
     panel(2, g24.GetPtr(), g23.GetPtr(), "#eta^{reco} - #eta^{truth}", 0.0002, 1e-3, "#times10^{-3}");
-    const std::string out = OUTDIR + "single_muon_pt_eta_response_ctr0_5_r17864_vs_r17618.png";
+    const std::string out = OUTDIR + "single_muon_pt_eta_response_ctr0_5" + VS + ".png";
     c.SaveAs(out.c_str());
     std::printf("  Saved: %s\n", out.c_str());
 }
@@ -297,7 +315,8 @@ void print_samb() {
         {"OS, " + wp_label + " pair, |y|<2.4, pT>4.5 both", pair_wp + " && m1.pt > 4.5 && m2.pt > 4.5 && fabs(m1.eta) < 2.4 && fabs(m2.eta) < 2.4"},
         {"OS, " + wp_label + " pair, 0-5% centrality",       pair_wp + " && m1.pt > 4.5 && m2.pt > 4.5 && fabs(m1.eta) < 2.4 && fabs(m2.eta) < 2.4 && avg_centrality >= 0 && avg_centrality < 5"},
     };
-    std::ofstream csv(OUTDIR + "from_same_b_fraction_r17864_vs_r17618.csv");
+    const std::string csv_path = OUTDIR + "from_same_b_fraction" + VS + ".csv";
+    std::ofstream csv(csv_path);
     csv << "selection,sample,N_pairs,from_same_b_fraction,from_same_ancestors_fraction\n";
     std::printf("%-46s | %-8s | %7s | %12s | %16s\n", "selection (opposite-sign reco pairs)", "sample", "N", "from_same_b", "from_same_anc.");
     for (const auto& r : rows) {
@@ -308,14 +327,14 @@ void print_samb() {
             const double fb = N > 0 ? *n.Filter("from_same_b").Count() / N : 0;
             const double fa = N > 0 ? *n.Filter("from_same_ancestors").Count() / N : 0;
             const double eb = N > 0 ? std::sqrt(fb * (1 - fb) / N) : 0;
-            std::printf("%-46s | %-8s | %7.0f | %6.4f+-%.4f | %16.4f\n", r.sel_label.c_str(), s == 0 ? "r17864" : "r17618", N, fb, eb, fa);
-            csv << r.sel_label << "," << (s == 0 ? "r17864" : "r17618") << "," << N << "," << fb << "," << fa << "\n";
+            std::printf("%-46s | %-8s | %7.0f | %6.4f+-%.4f | %16.4f\n", r.sel_label.c_str(), s == 0 ? RTAG24.c_str() : RTAG23.c_str(), N, fb, eb, fa);
+            csv << r.sel_label << "," << (s == 0 ? RTAG24 : RTAG23) << "," << N << "," << fb << "," << fa << "\n";
         }
     }
-    std::printf("  CSV: %sfrom_same_b_fraction_r17864_vs_r17618.csv\n", OUTDIR.c_str());
+    std::printf("  CSV: %s\n", csv_path.c_str());
 }
 
-void plot_r17864_vs_r17618_pTH125_300(const char* what = "recoeff", bool useTight = true) {
+void plot_overlay_rtag_effcy_comparison(const char* what = "recoeff", bool useTight = true) {
     wp_col = useTight ? "pass_tight" : "pass_medium";
     wp_label = useTight ? "Tight" : "Medium";
     if (!useTight) OUTDIR += "medium_wp/";

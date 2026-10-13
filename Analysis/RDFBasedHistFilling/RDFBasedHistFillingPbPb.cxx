@@ -1332,6 +1332,14 @@ void RDFBasedHistFillingPbPb::FillHistogramsCrossx(){
         hist2d_rresultptr_map[h2_eta_cnt] = df_crossx_ctr.Histo2D(
             ROOT::RDF::TH2DModel(h2_eta_cnt.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};N_{events}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "weight");
+        // SS twin of the OS counts above: same signal_cuts (+ Tight WP already on df_ss) and
+        // centrality filter, same axes and weight -> raw SS pair counts per centrality bin, for
+        // the data SS fraction SS/(SS+OS) vs pair pT (docs/tracking/ss_fraction_vs_pair_pt_data.md).
+        const std::string h2_eta_cnt_ss = "h2d_ss_crossx_w_signal_cuts_vs_pair_eta_vs_pair_pt_" + ctr + "_counts";
+        hist2d_rresultptr_map[h2_eta_cnt_ss] = map_at_checked(df_map, "df_ss", "FillHistogramsCrossx PbPb: df_ss (counts)")
+            .Filter(signal_cuts).Filter(ctr_filter).Histo2D(
+            ROOT::RDF::TH2DModel(h2_eta_cnt_ss.c_str(), ";p_{T}^{pair} [GeV];#eta^{pair};N_{events}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta", "weight");
 
         const std::string h2_minv_cnt = "h2d_crossx_pair_pt_minv_w_signal_cuts_" + ctr + "_counts";
         hist2d_rresultptr_map[h2_minv_cnt] = df_crossx_ctr.Histo2D(

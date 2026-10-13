@@ -278,7 +278,12 @@ PbPb) that feed crossx plots **and** R_AA.
 **B. Truth signal acceptance (required if acceptance/α is reported):**
 3. `run_rdf_pythia_truth.sh` (modes: private, nonprivate 5.36, nonprivate 5.02)
    → `histograms_pythia_*_no_data_resonance_cuts.root` (+ `_near_away_divided`)
-   — regenerates `h2d_sig_accept_{num,denom}_pt_eta` (and `_pt_150_eta`).
+   — regenerates `h2d_sig_accept_{num,denom}_pt_eta` (and `_pt_120_eta`). Since 2026-10-05
+   A_sig = truth MASS-WINDOW acceptance in the measured range (num/den expressions in
+   `Utilities/SignalAcceptanceDefinition.h`, marker-guarded; NO gap cut): a mass-window change
+   moves A_sig, a pair-pT / |η^pair| range change moves both legs, a gap-window change does NOT
+   touch it. POWHEG A_sig: `run_rdf_powheg_truth.sh nores` on the bb no-resonance-cut NTuple
+   (tracking doc PD8; the nominal POWHEG NTuple is resonance-vetoed and must not be used for A_sig).
 
 **C. MC fullsim reco-eff / det-response — code-consistency now, numerically
 inert until real MC (see §4):**
@@ -308,7 +313,9 @@ inert until real MC (see §4):**
 **pp24 (since 2026-08-18): the fullsim pair eps_reco IS the nominal.** It is
 eps_reco(pair pT, pair eta, dR), built by
 `plotting_codes/reco_effcy/build_pp24_fullsim_pair_reco_eff.C` on the canonical coarse axes and
-read by `Utilities/PairRecoEffEvaluator.h`. For pp, §3.C is therefore RESULT-AFFECTING: a signal
+read by `Utilities/PairRecoEffEvaluator.h` (all truth OS pairs since 2026-10-06; the product carries
+a `pair_reco_eff_pair_category` marker that the evaluator enforces, so a product of the other category
+is refused). For pp, §3.C is therefore RESULT-AFFECTING: a signal
 cut change must rerun the fullsim reco-eff AND rebuild that file, or the correction and the data
 describe different regions.
 

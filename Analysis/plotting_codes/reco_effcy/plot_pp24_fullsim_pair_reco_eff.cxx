@@ -72,6 +72,7 @@
 #include "../../MuonObjectsParamsAndHelpers/FullSimSampleType.h"   // sample dir + reco_eff/ layout
 #include "../trig_effcy/mc_based/dr_correction_sample_cfg.h"          // DrCorrPairRecoEffFile: the ONE name
 #include "../../RDFBasedHistFilling/CommonEffcyConfig.h"
+#include "../../Utilities/PairRecoEffDefinition.h"   // the product's pair-category marker
 
 namespace {
 
@@ -254,10 +255,10 @@ void DrawDefinition(double y, const std::string& wp_text = "", double size = 0.0
     t.SetTextFont(42);
     t.SetTextSize(size);
     t.DrawLatex(0.13, y,
-        // N_gen: truth pairs in the single-b signal region (signal cuts only). N_reco: those
+        // N_gen: truth opposite-sign pairs in the signal region (signal cuts only). N_reco: those
         // also reconstructed and passing the reconstructed selection INCLUDING the detector-gap
         // cuts -- so the gap acceptance is inside eps (2026-09-17).
-        "#varepsilon_{reco}^{pair} = N_{reco} / N_{gen}, single-b signal region "
+        "#varepsilon_{reco}^{pair} = N_{reco} / N_{gen}, truth signal region "
         "(N_{reco} incl. the detector-gap cuts)");
     if (wp_text.empty()) return;
     t.SetTextAlign(31);
@@ -278,15 +279,24 @@ void plot_pp24_fullsim_pair_reco_eff(bool use_full_sample = true, bool tight_WP 
     const std::string in_path = DrCorrPairRecoEffFile(id);
     const std::string wp      = tight_WP ? "tight" : "medium";
     const std::string wp_text = tight_WP ? "Tight muons" : "Medium muons";
-    const std::string sample_text = std::string("Pythia8 full simulation, ")
-                                  + (use_full_sample ? "pp 2024 conditions"
-                                                     : "pp 2024 conditions (test sample)")
-                                  + ", single-b opposite-sign pairs";
-
     std::unique_ptr<TFile> fin(TFile::Open(in_path.c_str(), "READ"));
     if (!fin || fin->IsZombie())
         throw std::runtime_error("plot_pp24_fullsim_pair_reco_eff: cannot open " + in_path
                                  + " -- run build_pp24_fullsim_pair_reco_eff.C first");
+
+    // The pair category is read from the product (written by the builder), never assumed: a
+    // product built before 2026-10-06 (single-b only) carries no marker and is refused.
+    auto* cat = dynamic_cast<TNamed*>(fin->Get(PairRecoEffDefinition::CategoryKey()));
+    if (!cat || std::string(cat->GetTitle()) != PairRecoEffDefinition::CategoryValue())
+        throw std::runtime_error("plot_pp24_fullsim_pair_reco_eff: " + in_path + " carries "
+                                 + (cat ? "a DIFFERENT" : "NO") + " pair-category marker -- "
+                                 "rebuild it with build_pp24_fullsim_pair_reco_eff.C");
+    const std::string category_text = (std::string(PairRecoEffDefinition::CategoryRdfTag()) == "_op")
+                                    ? "opposite-sign pairs" : cat->GetTitle();
+    const std::string sample_text = std::string("Pythia8 full simulation, ")
+                                  + (use_full_sample ? "pp 2024 conditions"
+                                                     : "pp 2024 conditions (test sample)")
+                                  + ", " + category_text;
 
     TH3D* num = Get<TH3D>(fin.get(), "h_pair_reco_eff_num_" + wp);
     TH3D* den = Get<TH3D>(fin.get(), "h_pair_reco_eff_denom");
@@ -301,7 +311,7 @@ void plot_pp24_fullsim_pair_reco_eff(bool use_full_sample = true, bool tight_WP 
     const std::string outdir = dir + "plots/pp24_reco_effcy_plots/" + wp + "/applied/";
     gSystem->mkdir(outdir.c_str(), kTRUE);
     std::ofstream tab(outdir + "pair_reco_eff_values.txt");
-    tab << "# Applied single-b pair reconstruction efficiency, " << wp << " WP\n"
+    tab << "# Applied pair reconstruction efficiency (" << cat->GetTitle() << "), " << wp << " WP\n"
         << "# source " << in_path << "\n"
         << "# eps = N(both muons reconstructed, WP, reco pair passes the data signal selection\n"
         << "#       incl. the detector-gap cuts on RECO q*eta and RECO eta^pair)\n"

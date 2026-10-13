@@ -16,6 +16,12 @@ protected:
     bool    is_fullsim{false}; // if is fullsim, load reco quantities
     bool    is_fullsim_overlay{false}; // if is fullsim overlay, load centrality info
     bool    perform_truth{false};
+    // TRUTH-ONLY input switch. true (DEFAULT) = nominal resonance-vetoed NTuples (bb + cc).
+    // false = the bb `_no_data_resonance_cuts` NTuple ONLY (PowhegAlgCoreT turn_data_resonance_cuts_on
+    // = false), output histograms_powheg_truth_bb_no_data_resonance_cuts.root. bb-only because only
+    // bb was produced in this mode; it serves the single-b signal acceptance, whose denominator needs
+    // ALL masses (docs/tracking/signal_acceptance_mass_window.md R2). Fullsim: unsupported (throws).
+    bool    with_data_resonance_cuts{true};
 
 // --------------------- protected class methods ---------------------------
 
@@ -107,10 +113,11 @@ protected:
     void                FillHistogramsTruthFlavorBinned();
     void                FillHistogramsSignalAcceptance();
     virtual void        HistPostProcessExtra() override;
+    virtual void        WriteOutputExtra() override;
 
 public:
-    explicit RDFBasedHistFillingPowhegTruth()
-    : RDFBasedHistFillingPowheg(false, false){}
+    explicit RDFBasedHistFillingPowhegTruth(bool with_data_resonance_cuts_input = true)
+    : RDFBasedHistFillingPowheg(false, false){ with_data_resonance_cuts = with_data_resonance_cuts_input; }
     ~RDFBasedHistFillingPowhegTruth(){}
 };
 

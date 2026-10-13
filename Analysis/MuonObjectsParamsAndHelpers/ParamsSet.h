@@ -9,6 +9,7 @@
 #include <utility> 
 #include <functional>
 #include <cmath>
+#include <stdexcept>
 
 struct AxisInfo{ // a simplified version of axis information - for constructing TH1DModel
     int        	nbins		= 1;         ///<  Number of bins
@@ -82,6 +83,18 @@ public:
     static constexpr double PAIR_ETA_CROSSX_MIN = -2.4;
     static constexpr double PAIR_ETA_CROSSX_MAX =  2.4;
     std::vector<double> pair_eta_crossx_bins;   // N_PAIR_ETA_CROSSX_BINS + 1 = 49 edges, filled in the constructor
+
+    // OPT-IN SUFFIXED VARIANT (user, 2026-10-05), never a second default: the pair-eta axis of the
+    // truth SIGNAL ACCEPTANCE (h2d_sig_accept_*), 44 bins over the MEASURED range only,
+    // [-PAIR_ETA_MEASURED_MAX, +PAIR_ETA_MEASURED_MAX] = [-2.2, 2.2] (|truth eta^pair| < 2.2 defines
+    // the measurement; docs/tracking/signal_acceptance_mass_window.md). Width 0.1, so its edges are
+    // EXACTLY the crossx fine-axis edges (pair_eta_crossx_bins) inside the measured range and every
+    // coarse panel boundary is an edge: A_sig cell k <-> crossx cell k+2, no re-binning needed.
+    // PAIR_ETA_MEASURED_MAX must equal pair_eta_fiducial_max (checked in the constructor; it is a
+    // double so the edges are not polluted by the float 2.2f = 2.2000000477).
+    static const int N_PAIR_ETA_MEASURED_BINS = 44;
+    static constexpr double PAIR_ETA_MEASURED_MAX = 2.2;
+    std::vector<double> pair_eta_measured_bins;  // N_PAIR_ETA_MEASURED_BINS + 1 = 45 edges, filled in the constructor
 
     // ---- NOMINAL COARSE pair-pT binning (SINGLE SOURCE OF TRUTH) ----
     // The coarse pair-pT bins used for the low-mass template fit / R_AA coarse binning and
@@ -459,6 +472,49 @@ public:
    		return std::string(buf);
    	}
 
+   	// ---- SINGLE-MUON TRUTH cuts (SINGLE SOURCE OF TRUTH for the truth NTuple and A_sig) ------
+   	// pT > 4.5 GeV (user 2026-09-08) and |eta| < 2.4 = the truth analog of the reco single-muon
+   	// cuts, applied by the nominal truth NTuple stage (PythiaAlgCoreT::PassCuts_PythiaCore keeps
+   	// pT >= 4.5 and |eta| <= 2.4). TARGET_MU_ETA_MAX = 2.5 is the A_sig TARGET muon phase space
+   	// (ID coverage; docs/tracking/signal_acceptance_mass_window.md PD4): with
+   	// truth_muon_fiducial_target the NTuple keeps |eta| <= 2.5 and no pT cut, and the A_sig
+   	// numerator applies the two cuts below (SingleMuTruthPtCutExpr / SingleMuTruthEtaCutExpr, same
+   	// inclusive edges as PassCuts). %g keeps the literals "4.5" / "2.4".
+   	static constexpr double SINGLE_MU_PT_MIN  = 4.5;
+   	static constexpr double SINGLE_MU_ETA_MAX = 2.4;
+   	static constexpr double TARGET_MU_ETA_MAX = 2.5;
+   	static std::string SingleMuTruthPtCutExpr(const std::string& pt1, const std::string& pt2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(%s >= %g && %s >= %g)",
+   		         pt1.c_str(), SINGLE_MU_PT_MIN, pt2.c_str(), SINGLE_MU_PT_MIN);
+   		return std::string(buf);
+   	}
+   	static std::string SingleMuTruthEtaCutExpr(const std::string& eta1, const std::string& eta2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(std::abs(%s) <= %g && std::abs(%s) <= %g)",
+   		         eta1.c_str(), SINGLE_MU_ETA_MAX, eta2.c_str(), SINGLE_MU_ETA_MAX);
+   		return std::string(buf);
+   	}
+   	static std::string TargetMuEtaCutExpr(const std::string& eta1, const std::string& eta2) {
+   		char buf[192];
+   		snprintf(buf, sizeof(buf), "(std::abs(%s) <= %g && std::abs(%s) <= %g)",
+   		         eta1.c_str(), TARGET_MU_ETA_MAX, eta2.c_str(), TARGET_MU_ETA_MAX);
+   		return std::string(buf);
+   	}
+   	// Truth-mass axis of the ALTERNATIVE pair reco-efficiency 3D (pair pT, pair eta, m_mumu):
+   	// mass as the closeness variable instead of dR (user 2026-10-06,
+   	// docs/tracking/pair_reco_eff_origin_test_and_views.md D4). N_SIGNAL_MINV_BINS_RECO_EFFCY
+   	// UNIFORM bins spanning exactly the signal window -- DERIVED from the window, never typed, so
+   	// the axis follows the window. Diagnostic only: the applied eps_reco stays on dR.
+   	static constexpr int N_SIGNAL_MINV_BINS_RECO_EFFCY = 4;
+   	static std::vector<double> SignalMinvRecoEffcyBins() {
+   		std::vector<double> e;
+   		for (int i = 0; i <= N_SIGNAL_MINV_BINS_RECO_EFFCY; ++i)
+   			e.push_back(signal_minv_min
+   			            + (signal_minv_max - signal_minv_min) * i / N_SIGNAL_MINV_BINS_RECO_EFFCY);
+   		return e;
+   	}
+
    	float minv_upper = 60;
 
   	static double PI;
@@ -808,6 +864,15 @@ ParamsSet::ParamsSet(){
         pair_eta_crossx_bins.push_back(PAIR_ETA_CROSSX_MIN
             + (PAIR_ETA_CROSSX_MAX - PAIR_ETA_CROSSX_MIN)
               * static_cast<double>(i) / N_PAIR_ETA_CROSSX_BINS);
+
+    // Measured-range pair-eta axis of the signal acceptance -- see the declaration.
+    if (std::fabs(PAIR_ETA_MEASURED_MAX - pair_eta_fiducial_max) > 1e-6)
+        throw std::runtime_error("ParamsSet: PAIR_ETA_MEASURED_MAX must equal pair_eta_fiducial_max");
+    pair_eta_measured_bins.clear();
+    pair_eta_measured_bins.reserve(N_PAIR_ETA_MEASURED_BINS + 1);
+    for (int i = 0; i <= N_PAIR_ETA_MEASURED_BINS; ++i)
+        pair_eta_measured_bins.push_back(-PAIR_ETA_MEASURED_MAX
+            + 2.0 * PAIR_ETA_MEASURED_MAX * static_cast<double>(i) / N_PAIR_ETA_MEASURED_BINS);
 
     // NOMINAL COARSE pair-pT binning (single source of truth; see the declaration above).
     // 8 LOGARITHMIC bins, 9 -> 150 GeV. Generated, never retyped, so N_COARSE_PAIR_PT_BINS is

@@ -233,6 +233,11 @@ axis is drawn log (`SetLogx`/`SetLogy`) then that axis's **binning must be log-s
 under a log axis make bin widths visually deceptive. (This is the converse of
 `feedback_log_scale_plots`, which requires a log axis for log-binned variables.)
 
+**R2a — a log axis is made with `SetLogx`/`SetLogy`/`SetLogz` only (user, 2026-10-02).** Use
+`gPad->SetLogx()` (`SetLogy`/`SetLogz`, or the same call on the pad/canvas object) for every
+logarithmic axis. Never emulate one: no `log10(x)` histogrammed on a linear axis, no bin-index
+axis, no relabelled uniform axis (`SetBinLabel`/`ChangeLabel`/hand-drawn `TGaxis`).
+
 **R3 — put the ratio on the plot when the ratio is the point.** If two/three curves share a
 canvas and their ratio is informative — they are expected to agree within errors
 (sample-vs-sample cross-checks, closure tests), or one is a reference for the others

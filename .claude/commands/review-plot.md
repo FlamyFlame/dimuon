@@ -188,6 +188,16 @@ R4. **Y/Z-scale default is LINEAR for non-momentum variables (user, 2026-09-07).
     `feedback_log_scale_plots` (this is the y/z-axis half; R2 above is the x-axis half) and
     `feedback_thstack_linear_and_ordering` (THStack case, same underlying principle).
 
+R5. **A log axis MUST be made with `SetLogx`/`SetLogy`/`SetLogz` (user, 2026-10-02).** Every
+    logarithmic x/y/z axis must come from the pad's own log switch — `gPad->SetLogx()` /
+    `SetLogy()` / `SetLogz()` (or the same call on the canvas/pad object). **FAIL** (WARNING;
+    CRITICAL if the axis numbers are wrong) if a log axis is emulated instead: histogramming
+    `log10(x)` on a linear axis, plotting against bin index, relabelling a uniform axis
+    (`SetBinLabel`/`ChangeLabel`/a hand-drawn `TGaxis`) to look logarithmic, or log-spaced
+    bins drawn on a linear axis. Grep the producing code for the `SetLog*` call of every axis
+    that renders logarithmic — and for every axis that R2 / R4 / `feedback_log_scale_plots`
+    require to be log — and confirm it on the PNG (decade/log tick spacing).
+
 ### Fitting checks (apply when plots include fits)
 10. **Fit overlay visible**: fit curve drawn on data, visually distinguishable (different color/style).
 11. **Fit follows data**: no wild divergence or large systematic residual pattern. Do NOT fail on moderate scatter — goodness-of-fit depends on statistics and model choice.

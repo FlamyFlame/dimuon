@@ -212,7 +212,8 @@ contradicts it, flag to the user before proceeding. Contents:
 - Steps that write or modify C++/ROOT/RDF code → /review-analysis-code.
   Include the relevant Physics Procedure section(s) in the task prompt.
   The reviewer must check physics correctness against the procedure.
-- Steps that create or modify plots or fitting output → /review-plot.
+- Steps that create or modify plots or fitting output → /review-plot
+  (diagnosis plots exempt — see §Auto-Dispatch Rules).
 - These reviewer rules apply to both user requests and agent-initiated
   work within an implementation plan, including after compaction.
 
@@ -359,7 +360,17 @@ what a sibling doc has already established or refuted.
 ## Auto-Dispatch Rules
 
 Before writing/modifying ANY code that reads analysis data/MC, apply the **NTuple-Processing Provenance (BLOCKING)** rule above (prefer ntuple-processing output; if standalone-from-raw, mirror the procedure exactly; if unclear whether to mirror, STOP AND ASK). The `/review-*` reviewers verify provenance per `.claude/conventions/ntuple-provenance.md`.
-When the user asks to create, fix, or modify a plot → invoke `/review-plot`
+When the user asks to create, fix, or modify a plot → invoke `/review-plot` — **EXCEPT diagnosis plots** (see below)
+
+**Diagnosis plots are EXEMPT from `/review-plot` (user rule 2026-10-12).** A diagnosis plot is made to
+investigate or sanity-check something: data-QA (per-run yield/lumi, abnormal-run checks), event-selection
+and detector diagnostics per run/LB, run-vs-rest shape comparisons, debug/cross-check plots made during an
+investigation. These are evidence for the user and experts, not analysis results. Do NOT run `/review-plot`
+on them, and do NOT ask whether to. The exemption does NOT cover plots that ARE results or feed them
+(crossx, R_AA, efficiencies/corrections applied in the analysis, template fits, MC–data comparison sets,
+internal-note/paper figures). Those still go through `/review-plot`. If unsure which kind a plot is, treat
+it as a result plot. The code rules still apply to diagnosis code (provenance, binnings, no
+illustrative prose, PNG only).
 When the user asks to write, modify, or fix C++/ROOT/RDF analysis code → invoke `/review-analysis-code`
 When the user asks to investigate a discrepancy, debug, or understand an unexpected result → invoke `/review-investigation`
 When the user asks to write or edit an internal note section → invoke `/review-note` (enforces the Academic Writing gate chain G1–G7; see `Analysis/docs/academic_writing_workflow.md`)

@@ -911,6 +911,12 @@ void RDFBasedHistFillingPP::FillHistogramsCrossx(){
         hist2d_rresultptr_map["h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts"] = df_ss_weighted.Histo2D(
             ROOT::RDF::TH2DModel("h2d_ss_crossx_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
             "pair_pt", "pair_eta", "crossx_weight_trig_corr");
+        // SS twin of h2d_counts_pair_pt_pair_eta_binned_w_signal_cuts: SAME node as the SS yield
+        // above, NO weight column -> raw SS pair counts on the OS-counts axes, for the data SS
+        // fraction SS/(SS+OS) vs pair pT (docs/tracking/ss_fraction_vs_pair_pt_data.md).
+        hist2d_rresultptr_map["h2d_ss_counts_pair_pt_pair_eta_binned_w_signal_cuts"] = df_ss_weighted.Histo2D(
+            ROOT::RDF::TH2DModel("h2d_ss_counts_pair_pt_pair_eta_binned_w_signal_cuts", ";p_{T}^{pair} [GeV];#eta^{pair}", npt, ptbins, ParamsSet::N_PAIR_ETA_CROSSX_BINS, ParamsSet::PAIR_ETA_CROSSX_MIN, ParamsSet::PAIR_ETA_CROSSX_MAX),
+            "pair_pt", "pair_eta");
 
         // SS half of the signal-region 1D set: SAME node/weight as the SS 2D yield above, and the
         // SAME axes as the OS half, so D_OS - D_SS is a clean bin-by-bin combinatoric

@@ -26,6 +26,8 @@
 #include "TStyle.h"
 #include "TSystem.h"
 #include "TLatex.h"
+#include "TLegend.h"
+#include "TLine.h"
 #include "TVectorD.h"
 // kFCalBinsPbPb2023 / CentralityFromFCal2023 — centrality recalculation from FCal ET,
 // for the years listed in UsesFCalCentralityRecompute().  The table is a MIRROR
@@ -574,6 +576,7 @@ private:
 
         // ---- Step-cutover: find first FCal slice where bg_cut > main_cut, -------
         // then use main_cut below and bg_cut above (no per-bin max).
+        double x_cross = -1.;   // FCal E_T of the crossover slice; -1 = no crossover (debug0 plot)
         {
             int i_cross = n_fit;
             for (int i = 0; i < n_fit; ++i) {
@@ -587,11 +590,14 @@ private:
                 gr_cut[i] = (i >= i_cross && gr_bg_cut_per_idx[i] > -1e299)
                             ? gr_bg_cut_per_idx[i] : gr_main_cut[i];
             }
-            if (i_cross < n_fit)
+            if (i_cross < n_fit) {
+                x_cross = gr_x[i_cross];
                 std::cout << Form("Step crossover at FCal = %.2f TeV (slice idx %d)\n",
                                   gr_x[i_cross], i_cross);
-            else
+            }
+            else {
                 std::cout << "No bg crossover found; using main-band cut throughout.\n";
+            }
         }
 
         std::cout << n_fit << " main-band slices converged; "
@@ -640,10 +646,13 @@ private:
                    "ZDC Gaussian mean per FCal slice;FCal E_{T} [TeV];ZDC mean");
                 ((TGraphErrors*)g_mu_err.Clone("g_ZDC_FCal_mu_sigma"))
                     ->Write("g_ZDC_FCal_mu_sigma", TObject::kOverwrite);
-                if (have_bg)
+                if (have_bg) {
                     wg((TGraph*)g_bg.Clone("g_ZDC_FCal_bg_cut"),
                        "g_ZDC_FCal_bg_cut",
                        Form("ZDC bg band #mu-%.1f#sigma;FCal E_{T} [TeV];ZDC cut", BG_N_SIGMA_CUT));
+                    ((TGraphErrors*)g_bg_mu_err.Clone("g_ZDC_FCal_bg_mu_sigma"))
+                        ->Write("g_ZDC_FCal_bg_mu_sigma", TObject::kOverwrite);
+                }
                 fcuts->Close();
                 std::cout << "Cut TGraphs saved to: " << cuts_path << std::endl;
             }
@@ -713,6 +722,61 @@ private:
               t2.DrawLatex(0.15, 0.81, "Failing cut"); }
             c2->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_pass_fail").c_str());
             delete c2; delete h_pass; delete h_fail;
+        }
+
+        // ---- Canvas 3a (debug0): both bands over their FULL extracted range -
+        // The "with_cut_debug" canvas below draws the FINAL (stepped) cut, so the main
+        // band is visible only left of the crossover and the background band only right
+        // of it.  Here both bands are drawn wherever they were fitted -- means and cut
+        // edges -- with the crossover marked, so the step can be judged against what the
+        // two fits actually do on either side of it.
+        {
+            TH2D* hd0 = (TH2D*)h_zdc_fcal_->Clone("__h2_c3a_ev");
+            hd0->SetDirectory(nullptr);
+            TCanvas* c3a = new TCanvas("c_zdc_fcal_dbg0_ev", "", 900, 700);
+            c3a->SetLogz(); c3a->SetRightMargin(0.13);
+            hd0->SetContour(99); hd0->Draw("COLZ");
+
+            auto styled = [&](TGraph* g, int color, int width, int style) {
+                g->SetLineColor(color); g->SetLineWidth(width); g->SetLineStyle(style);
+                g->SetMarkerColor(color); g->SetMarkerStyle(1);
+                g->Draw("L SAME");
+                return g;
+            };
+            // main band: mu (thick blue) and the cut edge mu + N_SIGMA_CUT*sigma (dark blue)
+            TGraph* g_main_mu_d = styled((TGraph*)g_mu.Clone("__g_dbg0_main_mu"),   kBlue,   4, 1);
+            TGraph* g_main_cut_d = styled((TGraph*)g_main.Clone("__g_dbg0_main_cut"), kBlue+3, 2, 1);
+            // background band: mu (thick green) and the veto edge mu - BG_N_SIGMA_CUT*sigma
+            TGraph *g_bg_mu_d = nullptr, *g_bg_cut_d = nullptr;
+            if (have_bg) {
+                TGraph* gbm = new TGraph(n_bg_all, gr_bg_x_all.data(), gr_bg_mu_all.data());
+                gbm->SetName("__g_dbg0_bg_mu");
+                g_bg_mu_d  = styled(gbm, kGreen, 4, 1);
+                g_bg_cut_d = styled((TGraph*)g_bg.Clone("__g_dbg0_bg_cut"), kGreen+3, 2, 1);
+            }
+            // crossover: where bg_cut first rises above main_cut; the final cut steps here
+            TLine* l_cross = nullptr;
+            if (x_cross > 0.) {
+                l_cross = new TLine(x_cross, hd0->GetYaxis()->GetXmin(),
+                                    x_cross, hd0->GetYaxis()->GetXmax());
+                l_cross->SetLineColor(kMagenta+1); l_cross->SetLineWidth(2); l_cross->SetLineStyle(2);
+                l_cross->Draw();
+            }
+
+            TLegend* lg0 = new TLegend(0.45, 0.62, 0.86, 0.88);
+            lg0->SetBorderSize(0); lg0->SetFillStyle(0); lg0->SetTextSize(0.030);
+            lg0->AddEntry(g_main_mu_d,  "main band #mu", "l");
+            lg0->AddEntry(g_main_cut_d, Form("main band #mu + %.0f#sigma", N_SIGMA_CUT), "l");
+            if (have_bg) {
+                lg0->AddEntry(g_bg_mu_d,  "background band #mu", "l");
+                lg0->AddEntry(g_bg_cut_d, Form("background band #mu - %.1f#sigma", BG_N_SIGMA_CUT), "l");
+            }
+            if (l_cross) lg0->AddEntry(l_cross, Form("crossover: FCal = %.2f TeV", x_cross), "l");
+            lg0->Draw();
+            tl.DrawLatex(0.15, 0.87, lbl.c_str());
+
+            c3a->SaveAs(OutPath("ZDC_E_tot_vs_FCal_Et_AC_with_cut_debug0").c_str());
+            delete c3a; delete hd0;
         }
 
         // ---- Canvas 3 (debug): 2D + cut + mu±sigma --------------------------
@@ -960,7 +1024,13 @@ private:
         // ---- save to ROOT file -----------------------------------------------
         const std::string cuts_path = cuts_dir_ + "/event_sel_cuts_pbpb_20" + yr_ + "_alt.root";
         {
-            TFile* fcuts = TFile::Open(cuts_path.c_str(), "RECREATE");
+            // UPDATE, not RECREATE: cuts 2-5 of the ALT selection are written into this same
+            // file by plot_pbpb_event_sel_cuts_alt().  With RECREATE, re-running the
+            // event-level macro (cut 1 only) silently stripped them, and the next consumer --
+            // LoadCutsFC, PbPbExtras -- threw on a missing ZDC_time_cut_ns with no hint that a
+            // rerun had caused it.  The nominal file has always been UPDATE; this matches it.
+            // Every key below is written with kOverwrite, so a rerun still replaces cut 1.
+            TFile* fcuts = TFile::Open(cuts_path.c_str(), "UPDATE");
             if (!fcuts || fcuts->IsZombie()) {
                 std::cerr << "Cannot open alt cuts file: " << cuts_path << std::endl;
             } else {
@@ -981,7 +1051,7 @@ private:
                     ->Write("g_ZDC_FCal_mu_sigma", TObject::kOverwrite);
                 TVectorD poly(4);
                 poly[0] = qa; poly[1] = qb; poly[2] = qc; poly[3] = ALT_POLY_X1;
-                poly.Write("alt_poly_a_b_c_x1");
+                poly.Write("alt_poly_a_b_c_x1", TObject::kOverwrite);
                 fcuts->Close();
                 std::cout << "Alt cut TGraphs saved to: " << cuts_path << std::endl;
             }

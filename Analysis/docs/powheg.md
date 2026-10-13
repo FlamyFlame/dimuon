@@ -222,7 +222,7 @@ Three independent categorization schemes, each filled with both normal and Jacob
 2. **Origin-binned**: ss/op × (gg, gq, single_gluon, qqbar, incoming, single_b, all)
 3. **Flavor-binned**: ss/op × (single_b, both_from_b, both_from_c, others)
 
-Plus signal acceptance histograms: 2D (pT, eta) for numerator (signal cuts) and denominator (`from_same_b`).
+Plus signal acceptance histograms: 2D (pT, eta), definition in `Utilities/SignalAcceptanceDefinition.h` (2026-10-05: den = `from_same_b` && pair pT > 9 && |η^pair| < 2.2, num = den && mass window). **The nominal POWHEG truth NTuple is resonance-vetoed**, which biases an all-mass denominator; A_sig therefore uses the bb NO-resonance-cut NTuple: `PowhegAlgCoreT::setTurnDataResonanceCutsOn(false)` (`run_powheg_truth_bb_no_res_cuts.{sh,sub}` → `muon_pairs_powheg_bb_truth_no_data_resonance_cuts.root`) → `run_rdf_powheg_truth.sh nores` → `histograms_powheg_truth_bb_no_data_resonance_cuts.root` (`docs/tracking/signal_acceptance_mass_window.md` PD8/R3). The A_sig histograms in the nominal `histograms_powheg_truth.root` are NOT to be used. If Condor jobs hang on `/pnfs` NFS reads, rerun with `POWHEG_USE_XROOTD=1` (+ x509 proxy).
 
 ### Truth pipeline (manual)
 
