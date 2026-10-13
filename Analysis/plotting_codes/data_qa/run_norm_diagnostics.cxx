@@ -93,7 +93,9 @@ void run_norm_diagnostics(int yr, const std::string& evsel_root, const std::stri
     const Fac fac[3] = {{"hlt_per_lumi", "N_{HLT_mu4} / L [nb]"},
                         {"evsel_frac", "N_{evsel, 0-80%} / N_{HLT_mu4}"},
                         {"sig_per_event", "N_{signal} / N_{evsel, 0-80%}"}};
-    std::ofstream o(plotbase + Form("/pbpb%d_run_norm_factors.csv", yr));
+    const std::string dir = plotbase + "/signal_yield_factored_per_run";   // the original N/L plots stay in signal_yield_per_lumi_per_run/
+    gSystem->mkdir(dir.c_str(), true);
+    std::ofstream o(dir + Form("/pbpb%d_run_norm_factors.csv", yr));
     o << "run,L_nb,n_hlt,n_evsel_c80,n_sig,hlt_per_L,evsel_frac,sig_per_evsel,pull_hlt_per_L,pull_sig_per_evsel\n";
     std::vector<double> val[3], err[3];
     for (auto& r : rows) {
@@ -140,7 +142,6 @@ void run_norm_diagnostics(int yr, const std::string& evsel_root, const std::stri
         if (k == 0) { TLatex tl; tl.SetNDC(); tl.SetTextSize(0.075);
             tl.DrawLatex(0.12, 0.80, Form("Pb+Pb 20%d data, HLT_mu4; red = investigated runs; dashed = dataset average", yr)); }
     }
-    const std::string dir = plotbase + "/signal_yield_per_lumi_per_run";
     c.SaveAs((dir + Form("/pbpb%d_norm_factors_per_run.png", yr)).c_str());
 
     // The two factors of N_sig/L as stand-alone per-run plots, same style as plot_signal_yield_per_lumi_per_run:

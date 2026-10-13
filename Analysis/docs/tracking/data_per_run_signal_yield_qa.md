@@ -100,7 +100,7 @@ lumitable (`lumitable_pbpb_26_HLT_mu4.csv`, original GRL) has full-run lumi. The
 Rerun once the Step-17 NTuple (pbpb2026_analysis_support) is hadd'ed: the re-derived cuts change the counts slightly.
 
 **R2a/R2d — the per-run N/L deficit splits into three factors** (`run_norm_diagnostics.cxx` →
-`plots/data_qa/signal_yield_per_lumi_per_run/pbpb{23,26}_norm_factors_per_run.png`, CSV `plots/data_qa/pbpb{23,26}_run_norm_factors.csv`):
+`plots/data_qa/signal_yield_factored_per_run/pbpb{yy}_norm_factors_per_run.png` + the two stand-alone factor plots `pbpb{yy}_signal_per_evsel_event_per_run.png`, `pbpb{yy}_evsel_events_per_lumi_per_run.png`, CSV `pbpb{yy}_run_norm_factors.csv`; user 2026-10-12: factored plots in their OWN subdir, the original N/L plots stay in `signal_yield_per_lumi_per_run/`):
 N_sig/L = (N_HLT/L) × (N_evsel/N_HLT) × (N_sig/N_evsel).
 | Run | N_HLT/L vs neighbours | evsel pass (HLT_mu4; 0–80 %) | N_sig/N_evsel pull | ⇒ deficit sits in |
 |---|---|---|---|---|
@@ -119,7 +119,7 @@ N_sig/L = (N_HLT/L) × (N_evsel/N_HLT) × (N_sig/N_evsel).
 - pp24 488239: low-lumi run (139 LBs, 0.26 pb⁻¹ ≈ 1/40 of the normal lumi/LB); pair shapes show no systematic difference and
   signal/all-OS-Tight = 0.207 vs 0.211 ⇒ normalization (lumi or trigger) issue. No raw-event normalization was done for pp.
 - Event-selection per run (cut lines = the year's derived cuts, applied as in PassEventSel): `plots/data_qa/pbpb{23,26}_run<run>/evsel/`;
-  per-run pass table for all runs: `plots/data_qa/pbpb{23,26}_evsel_pass_per_run.csv`. Pair plots: `.../pairs/`
+  per-run pass table for all runs: `plots/data_qa/signal_yield_factored_per_run/pbpb{yy}_evsel_pass_per_run.csv`. Pair plots: `.../pairs/`
   (χ² "UU"; single-muon panels count 2 entries per pair, so their p-values are approximate).
 - 2026 per-run evsel used the Step-17 re-derived `event_sel_cuts_pbpb_2026.root` (19:58); the 2026 pair plots used the
   2026-09-17 NTuple (these runs are not affected by the LB exclusion).
