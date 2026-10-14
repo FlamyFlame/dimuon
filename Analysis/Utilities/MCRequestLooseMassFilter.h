@@ -5,5 +5,6 @@
 // two cannot drift apart on the value being argued about.
 #pragma once
 namespace MCRequest {
-constexpr double kLooseMassMax = 10.0;   // GeV
+constexpr double kLooseMassMax         = 10.0;    // GeV -- first request (sign-independent, top-2 slices)
+constexpr double kLooseMassMaxSameSign = 100.0;   // GeV -- SAME-SIGN request (user, 2026-09-17: 100, not 10)
 }

@@ -662,7 +662,7 @@ void plot_muon_q_eta_spectrum(bool use_tight_wp = true, bool use_new_gap_cuts = 
     TH1D *pp_lopt = book("h_pp_lopt"), *pp_hipt = book("h_pp_hipt");
     std::vector<TH1D*> pp_dummy;
     const FillCounts pp_fc =
-        FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, pp_all,
+        FillSample({"pp_2024/", "pp_2024", "2mu4", 13}, use_tight_wp, false, pp_all,
                    pp_pos, pp_neg, pp_lopt, pp_hipt, pp_dummy, ctr_lo, ctr_hi);
 
     // ================ PbPb, every running period found on disk ==================

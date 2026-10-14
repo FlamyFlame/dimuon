@@ -110,10 +110,10 @@ void PlotMCDataComprSignalKinematics::Run(){
             series.push_back({SignalMcKey(obs, McSignalCatAllSS()), "Pythia, all same-sign pairs",
                               kSignalMcColor, 21, nullptr});
         } else {
-            series.push_back({SignalMcKey(obs, McSignalCatSingleB()), "Pythia, single-b",
+            series.push_back({SignalMcKey(obs, McSignalCatSingleB()), "Pythia, requiring truth signal cuts & truth single-b signal",
                               kSignalMcColor, 21, nullptr});
             if (draw_mc_all_os)
-                series.push_back({SignalMcKey(obs, McSignalCatAllOS()), "Pythia, all opposite-sign pairs",
+                series.push_back({SignalMcKey(obs, McSignalCatAllOS()), "Pythia, requiring truth signal cuts only",
                                   kSignalMcRefColor, 22, nullptr});
         }
 
@@ -244,12 +244,14 @@ void PlotMCDataComprSignalKinematics::Run(){
         // cannot be confused for the same MC object.
         // Explicit NDC box inside the headroom reserved above (kPeakFrac): auto-placement
         // put it bottom-left onto the data (review-plot 2026-10-13).
-        TLegend* l = new TLegend(0.26, 0.64, 0.92, 0.90);
+        // The OS pad's entries are long selection names: smaller text, wider box, so nothing leaves the pad.
+        const bool long_labels = (ksign != 0);
+        TLegend* l = new TLegend(0.26, 0.64, 0.97, 0.90);
         l->SetBorderSize(0);
         l->SetFillStyle(0);
         l->SetTextFont(42);
-        l->SetMargin(0.2);
-        l->SetTextSize(0.048);
+        l->SetMargin(long_labels ? 0.12 : 0.2);
+        l->SetTextSize(long_labels ? 0.030 : 0.048);
         l->SetHeader(signTitles[ksign].c_str());
         for (const auto& s : series) if (s.h) l->AddEntry(s.h, s.legend.c_str(), "lp");
         l->Draw();

@@ -19,6 +19,7 @@
 #include <TArrow.h>
 #include <TPad.h>
 #include <stdexcept>
+#include <algorithm>
 
 class RAAPlotting{
 private:
@@ -96,14 +97,15 @@ private:
 	                                                 const std::vector<double>& edges) {
 		std::vector<std::string> labels;
 		for (const auto& g : groups)
-			labels.push_back(Form("p_{T}^{pair} %.3g-%.3g GeV",
+			labels.push_back(Form("%.3g-%.3g GeV",
 			                      edges.at(g.front() - 1), edges.at(g.back())));
 		return labels;
 	}
 	ParamsSet raa_pms;
 	std::vector<std::vector<int>> pair_pt_rebins =
-		MakePairPtGroups(raa_pms.pT_bins_150, raa_pms.pair_pt_coarse_bins);
-	std::vector<Color_t> pair_pt_colors = {kBlue, kRed, kGreen+2};
+		MakePairPtGroups(raa_pms.pT_bins_150, raa_pms.pair_pt_coarse_bins,
+		                 static_cast<int>(raa_pms.pair_pt_coarse_bins.size()) - 1);   // one line per coarse (efficiency) cell; 2 subplots x 4
+	std::vector<Color_t> pair_pt_colors = {kBlack, kBlue, kRed, kGreen+2, kMagenta, kOrange+7, kCyan+2, kGray+2};   // one colour per pair-pT bin
 	std::vector<std::string> pair_pt_labels = MakePairPtLabels(pair_pt_rebins, raa_pms.pT_bins_150);
 
 	// the rebins, colors & labels for the variable showing up as different lines
@@ -141,6 +143,7 @@ private:
 	// mode 4: R_AA vs pair pT in the coarse eta^pair panels, one PNG per centrality bin
 	void PlotPairPtInEtaPanels();
 public:
+	double pt_mode_ymax_fixed = -1.; // >0: fixed y max for the mode-1 (R_AA vs pair pT) plot; markers above it may fall off-range
 	bool use_same_y_axis_range_23_24 = false;
 	vector<vector<double>> ymax_pt_mode_23_24_common = {{0.92, 1.2}, {2.4, 3}}; // top dim: trigger; 2nd dim: ctr-based subplot
 
@@ -630,8 +633,16 @@ void RAAPlotting::RunPlotting(){
 	}
 	cout << endl;
 
+	// mode 3: the highest pair-pT bin (106-150 GeV) is not drawn (user 2026-10-13: low-stat outlier);
+	// the remaining bins split over the subplots, first subplot taking the extra one (4+3).
+	const int nLines = (mode == 3) ? (int)line_var_rebins.size() - 1 : (int)line_var_rebins.size();
+	const int nFirst = (nLines + nSubplots - 1) / nSubplots;
+	std::vector<TH1D*> h_first_list; std::vector<double> ymax_list;
+
 	for (int subplot = 1; subplot <= nSubplots; subplot++){
 	    c_raa->cd(subplot);
+	    const int line_begin = (subplot-1) * nFirst;
+	    const int line_end   = (subplot == nSubplots) ? nLines : subplot * nFirst;
 
 	    // Upper-centre, compact: with the y-headroom below, the legend clears the
 	    // data bulk everywhere; placing it in x∈[0.30,0.70] also avoids the tall
@@ -639,7 +650,7 @@ void RAAPlotting::RunPlotting(){
 	    // right of the ATLAS/Internal block (x <= ~0.40), so the two never overlap. Mode 1 (vs pT): the
 	    // sparse high-pT points with large errors fill the upper right, so the legend goes under the
 	    // ATLAS label on the LEFT, between the low-pT points (bottom) and the ATLAS block (top).
-	    TLegend* l = (mode == 1) ? new TLegend(0.18,0.36,0.62,0.78) : new TLegend(0.42,0.62,0.92,0.90);
+	    TLegend* l = (mode == 1) ? new TLegend(0.18,0.50,0.62,0.80) : new TLegend(0.42,0.62,0.92,0.90);
 
 		l->SetBorderSize(0);
 		l->SetFillStyle(0);
@@ -648,9 +659,10 @@ void RAAPlotting::RunPlotting(){
 		l->SetMargin(0.2);
 		l->SetTextColor(1);
 
+		if (mode == 3) l->SetHeader("p_{T}^{pair}", "L");
 		double ylim = 0.;
 
-	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
+	    for (int iline = line_begin; iline < line_end; iline++){
 			TH1D* hcrossx_pbpb_centr_cur_ctr = hcrossx_pbpb_proj_list.at(iline);
 	    	TH1D* h_RAA_cur_bin = (TH1D*) hcrossx_pbpb_centr_cur_ctr->Clone("h_RAA_cur_bin");
 			if (mode == 1 || mode == 2){
@@ -746,7 +758,9 @@ void RAAPlotting::RunPlotting(){
 		if (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1){ // pt mode; use same range for 23 + 24; running 23/24 plotting
 			ymax = ymax_pt_mode_23_24_common.at(run_year_trigger_mode % 2).at(subplot-1);
 		}
-	    TH1D* h_first = h_RAA_list.at((subplot-1) * line_var_rebins.size() / nSubplots);
+		if (mode == 1 && pt_mode_ymax_fixed > 0.) ymax = pt_mode_ymax_fixed;
+	    TH1D* h_first = h_RAA_list.at(line_begin);
+	    h_first_list.push_back(h_first); ymax_list.push_back(ymax);
 	    h_first->GetYaxis()->SetRangeUser(0,ymax);
 	    h_first->GetYaxis()->SetTitle("R_{AA}");
 	    h_first->GetXaxis()->SetTitle( (mode==1) ? "p_{T}^{pair} [GeV]" : (mode==2) ? "#eta^{pair}" : "Centrality [%]" );
@@ -760,7 +774,7 @@ void RAAPlotting::RunPlotting(){
 	    // mode 1: pT_bins_150 is LOG-binned -> log x (as the crossx and the mode-4 panels)
 	    if (mode == 1) { gPad->SetLogx(); h_first->GetXaxis()->SetMoreLogLabels(); }
 	    
-	    for (int iline = (subplot-1) * line_var_rebins.size() / nSubplots; iline < subplot * line_var_rebins.size() / nSubplots; iline++){
+	    for (int iline = line_begin; iline < line_end; iline++){
 	    	TH1D* h_RAA_cur_bin = h_RAA_list.at(iline);
 	    	std::string draw_options = (iline == 0)? "" : "same";
 	    	h_RAA_cur_bin->Draw(draw_options.c_str());
@@ -786,6 +800,16 @@ void RAAPlotting::RunPlotting(){
 		lab->DrawLatex(0.185, 0.815, "Internal");
 	}
 
+	// mode 3: both subplots share one y range, set by the drawn pair-pT bins only
+	if (mode == 3){
+		const double ycommon = *std::max_element(ymax_list.begin(), ymax_list.end());
+		for (int sp = 1; sp <= nSubplots; ++sp){
+			h_first_list.at(sp-1)->GetYaxis()->SetRangeUser(0, ycommon);
+			c_raa->cd(sp)->Modified();
+		}
+		c_raa->Update();
+	}
+
 	std::string use_same_y_axis_range_23_24_suffix = (mode == 1 && use_same_y_axis_range_23_24 && run_year_trigger_mode > 1)? "_same_23_24_ymax" : "";
 	std::string outfile_path = out_dir + "raa_" + obs_suffix + run_year_trigger_suffix + use_same_y_axis_range_23_24_suffix + ".png";
 	c_raa->SaveAs(outfile_path.c_str());
@@ -799,6 +823,7 @@ void RAA_plotting_single_run_year_trigger_mode(int run_year_trigger_mode, bool u
 	for (int mode = 1; mode <= 3; mode++){
 		auto raa_plotting_local = RAAPlotting(mode, run_year_trigger_mode);
 		raa_plotting_local.use_same_y_axis_range_23_24 = use_same_y_axis_range_23_24_arg;
+		if (run_year_trigger_mode == 6) raa_plotting_local.pt_mode_ymax_fixed = 1.5;
 		raa_plotting_local.RunPlotting();
 	} 
 }

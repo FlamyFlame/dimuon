@@ -1,6 +1,6 @@
 // Differential cross-section vs pair pT per pTHat (kn) range.
 // Selection: muon_pair_tree_kin*_sign2 with from_same_b (nominal), or -- ss_loose_mass=true --
-//            muon_pair_tree_kin*_sign1 with truth/reco m_mumu < MCRequest::kLooseMassMax.
+//            muon_pair_tree_kin*_sign1 with truth/reco m_mumu < g_ss_mass_max (default 100 GeV).
 // Two plots: truth_pair_pt and reco pair_pt (pair_pass_medium additionally required).
 // Left subplot: markers+errorbars per kn.  Right subplot: stack.
 // Entry point calls two binning versions: 20 bins 9-120 GeV and 25 bins 9-150 GeV.
@@ -35,35 +35,37 @@
 //   true  = SAME-SIGN pairs under the LOOSE MASS cut of the additional-statistics MC request
 //           (docs/tracking/pthat_slice_mass_stats_sample_request.md D9, 2026-09-17): same-sign
 //           tree (`_sign1`, split by truth_same_sign upstream), truth pair pT under
-//           truth_minv < kLooseMassMax and reco pair pT under minv < kLooseMassMax -- each variable
-//           cut at ITS OWN level, because the request's generator filter is a truth-mass cut while
-//           the analysis consumes reco mass. Outputs go to their own subdirectory (ss_mass_lt10/)
-//           with the nominal file names; the nominal PNGs are never touched. The projected
-//           function is nominal-only and throws on this flag.
-bool g_is_test_sample = true;
-bool g_use_tight_wp   = true;
-bool g_ss_loose_mass  = false;
+//           truth_minv < g_ss_mass_max and reco pair pT under minv < g_ss_mass_max -- each
+//           variable cut at ITS OWN level, because the request's generator filter is a truth-mass
+//           cut while the analysis consumes reco mass. Outputs go to their own subdirectory
+//           (ss_mass_lt<cut>/) with the nominal file names; the nominal PNGs are never touched.
+//           The projected function is nominal-only and throws on this flag.
+// g_ss_mass_max   : that loose mass cut [GeV]; default MCRequest::kLooseMassMaxSameSign (100).
+bool   g_is_test_sample = true;
+bool   g_use_tight_wp   = true;
+bool   g_ss_loose_mass  = false;
+double g_ss_mass_max    = MCRequest::kLooseMassMaxSameSign;
 
 static std::string SampleSuffix() { return g_is_test_sample ? "" : "_full"; }
 static std::string SampleDir()    { return FullSimSampleInputDir(FullSimSampleType::pp, g_is_test_sample); }
 static std::string InputFile()    { return SampleDir() + "muon_pairs_pythia_fullsim_pp24_no_data_resonance_cuts"
                                            + SampleSuffix() + ".root"; }
-static std::string OutputDir()    { return SampleDir() + "plots/" + (g_ss_loose_mass ? "ss_mass_lt10/" : ""); }
+static std::string OutputDir()    { return SampleDir() + "plots/" + (g_ss_loose_mass ? std::string(Form("ss_mass_lt%g/", g_ss_mass_max)) : std::string("")); }
 static std::string PairWPFilter() { return g_use_tight_wp ? "pair_pass_tight" : "pair_pass_medium"; }
 // The pair population (see g_ss_loose_mass): tree, per-level filters, and the label naming it.
 static std::string PairTree(int ikn) { return "muon_pair_tree_kin" + std::to_string(ikn)
                                               + (g_ss_loose_mass ? "_sign1" : "_sign2"); }
 static std::string TruthFilter()     { return g_ss_loose_mass
-                                              ? std::string(Form("truth_minv < %g", MCRequest::kLooseMassMax))
+                                              ? std::string(Form("truth_minv < %g", g_ss_mass_max))
                                               : std::string("from_same_b"); }
 static std::string RecoFilter()      { return (g_ss_loose_mass
-                                               ? std::string(Form("minv < %g", MCRequest::kLooseMassMax))
+                                               ? std::string(Form("minv < %g", g_ss_mass_max))
                                                : std::string("from_same_b")) + " && " + PairWPFilter(); }
 // The same-sign header is ~14 characters longer than the nominal one, which fills the panel
 // width exactly at 0.038; it is shrunk so the header cannot run under the legend.
-static double      HeaderTextSize()  { return g_ss_loose_mass ? 0.032 : 0.038; }
+static double      HeaderTextSize()  { return g_ss_loose_mass ? 0.030 : 0.038; }
 static std::string SelLabel()        { return g_ss_loose_mass
-                                              ? std::string(Form("same sign, m_{#mu#mu} < %g GeV", MCRequest::kLooseMassMax))
+                                              ? std::string(Form("same sign, m_{#mu#mu} < %g GeV", g_ss_mass_max))
                                               : std::string("single-b signal"); }
 
 // STATISTICAL-FORECAST factors N_full/N_test. Meaningful ONLY on the TEST sample, where they answer
@@ -873,10 +875,14 @@ void replot_scale_forecast() {
 // FULL production (input dir, "_full" suffix, honesty caption, forecast-factor no-op);
 // use_tight_wp selects the pair WP (nominal TIGHT).
 void plot_pythia_fullsim_kn_pt_crossx(bool is_test_sample = true, bool use_tight_wp = true,
-                                      bool ss_loose_mass = false) {
+                                      bool ss_loose_mass = false,
+                                      double ss_mass_max = MCRequest::kLooseMassMaxSameSign) {
     g_is_test_sample = is_test_sample;
     g_use_tight_wp   = use_tight_wp;
     g_ss_loose_mass  = ss_loose_mass;
+    g_ss_mass_max    = ss_mass_max;
+    if (ss_loose_mass && !(ss_mass_max > 0.))
+        throw std::invalid_argument("plot_pythia_fullsim_kn_pt_crossx: ss_mass_max must be > 0");
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
     plot_impl(20, 120., "");

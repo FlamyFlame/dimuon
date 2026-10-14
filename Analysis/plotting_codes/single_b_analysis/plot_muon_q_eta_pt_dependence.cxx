@@ -412,7 +412,8 @@ void plot_muon_q_eta_pt_dependence(bool use_tight_wp = true) {
         }
 
     printf("\n=== pp24 ===\n");
-    FillSample({"pp_2024/", "pp_2024", "2mu4", 12}, use_tight_wp, false, 0, ctr_lo, ctr_hi,
+    // 13 parts = PPExtras.c file_batch_max (part13 = Sep-2026 recovery of run 488534).
+    FillSample({"pp_2024/", "pp_2024", "2mu4", 13}, use_tight_wp, false, 0, ctr_lo, ctr_hi,
                h, n_all, n_cut);
 
     // Per-year part counts = merged NTuple-processing part files on disk (2023 part5 / 2025 part7 =
