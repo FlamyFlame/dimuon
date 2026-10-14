@@ -146,3 +146,17 @@
 {"event":"end","command":"review-plot","status":"closed_without_formal_reverify","iterations":1,"timestamp":"2026-09-07T22:52:00Z","criticals":1,"warnings":0,"slug":"mupt45-eta-linear-yscale"}
 {"event":"start","command":"review-analysis-code","task":"mupt45/gap125/pairpt9 adoption + PbPb migration","slug":"mupt45-gap125-pairpt9-adoption","timestamp":"2026-09-09T00:06:00-04:00"}
 {"event":"start","command":"review-analysis-code","task":"4th iteration: verify the post-iteration-3 amendment batch of the muon pT 4.5 / gap -1.25 / pair pT 9 adoption","slug":"mupt45-iter4-amendment-verify","timestamp":"2026-09-09T22:33:11-04:00"}
+{"event":"start","command":"review-plot","task":"pair pT / b-hadron pT proxy plots","slug":"pair-pt-proxy-b-hadron","timestamp":"2026-10-08T20:46:44Z"}
+{"event":"end","command":"review-plot","status":"approved","iterations":2,"timestamp":"2026-10-08T21:05:00Z","criticals":0,"warnings":0,"slug":"pair-pt-proxy-b-hadron"}
+{"event":"start","command":"review-note","task":"truth_level_studies section","slug":"truth-level-proxy-section","timestamp":"2026-10-08T21:15:00Z"}
+{"event":"end","command":"review-note","status":"approved","iterations":2,"timestamp":"2026-10-08T21:40:00Z","criticals":0,"warnings":0,"slug":"truth-level-proxy-section"}
+{"event":"start","command":"review-note","task":"IntNote reconstruction_efficiency.tex: bin-by-bin decision + reco-binned eps (pT,eta,m) + within-cell shape syst","slug":"reco-eff-bin-by-bin","timestamp":"2026-10-13T00:24:20-04:00"}
+{"event":"end","command":"review-note","status":"approved","iterations":4,"timestamp":"2026-10-13T00:53:25-04:00","criticals":0,"warnings":0,"slug":"reco-eff-bin-by-bin"}
+{"event":"start","command":"review-analysis-code","task":"D7 numerator change: reco-binned eps numerator = matched && reco cuts && truth in T","slug":"d7-numerator-truth-in-t","timestamp":"2026-10-13T16:48:13-04:00"}
+{"event":"start","command":"review-plot","task":"D7 reco-binned eps + smoothness + syst plots regenerated","slug":"d7-reco-binned-plots","timestamp":"2026-10-13T16:49:44-04:00"}
+{"event":"end","command":"review-analysis-code","status":"approved","iterations":1,"timestamp":"2026-10-13T16:52:01-04:00","criticals":0,"warnings":0,"slug":"d7-numerator-truth-in-t"}
+{"event":"end","command":"review-plot","status":"approved","iterations":1,"timestamp":"2026-10-13T16:53:40-04:00","criticals":0,"warnings":0,"slug":"d7-reco-binned-plots"}
+{"event":"start","command":"review-note","task":"reco eff note: D7 numerator truth in T","slug":"reco-eff-d7-numerator","timestamp":"2026-10-13T16:55:50-04:00"}
+{"event":"end","command":"review-note","status":"approved","iterations":3,"timestamp":"2026-10-13T17:14:09-04:00","criticals":0,"warnings":0,"slug":"reco-eff-d7-numerator"}
+{"event":"start","command":"review-plot","task":"Step-3 dR-correction applied-fit-form demo plot pair pT 18.2-25.8","slug":"dr-corr-applied-demo","timestamp":"2026-10-14T07:15:55-04:00"}
+{"event":"end","command":"review-plot","status":"skipped_by_user","iterations":0,"timestamp":"2026-10-14T07:16:01-04:00","slug":"dr-corr-applied-demo"}
