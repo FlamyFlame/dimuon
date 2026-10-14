@@ -270,8 +270,41 @@ Concurrency: every ACLiC compile in a private build dir (other sessions compile 
 stage (Stage 0 FCal all-year comparison, crossx Stages 6-8, R_AA) is run. Not in scope (user decision 2026-10-13 for the
 rerun: nominal + res_cut_v2 only): `_no_res_cut`, single-muon trees/ScrambGen, template fits.
 
+## Progress R5
+- 16:36–17:46 step 1 DONE: cuts files re-derived (2 bad runs excluded, as before); old files in `pbpb_2023/pre_rerun_20261013/`.
+- 17:46 step 2: Condor clusters 24 (res_cut_v2) + 25 (nominal). Parts 1,3-6 finished (ExitCode 0, ≤ 29 min); proc 1
+  (= part2) of BOTH clusters hung at 126 MB memory and was held by the 2 h watchdog at 19:48 → driver FATAL (as designed).
+  Cause: dCache NFS read of `data_pbpb23_part2.root` (49.65 GB, /pnfs LGD symlink) hangs — `dd` of the first 50 MB times
+  out from the interactive node too — while the file is ONLINE and reads fine over xrootd (46 216 614 entries). Same file
+  read fine over NFS at 16:36–17:12 (step 1), so a dCache pool/door problem, not the file.
+  Fix (no physics change, same bytes): `xrdcp -C adler32:029bb962` (server checksum) to local disk, symlink → local copy,
+  removed 24.1/25.1, rerun step 2 in full (START_AT=2).
+
+- 19:54–20:40 steps 2–5 DONE (log `pipelines/logs/pbpb23_rerun_20261013.log`, last line `ALL DONE pbpb23`):
+  - Step 2: clusters 26/27, all 6 procs ExitCode 0, clean .err, hadd OK; exclusion check (nlb0 nbad maxlb nruns) = 0 0 1281 58.
+    OS/SS pairs old → new: `_mindR_0_02` 435 411/363 907 → 445 487/372 325 (+2.3 %); `_res_cut_v2` 800 565/735 583 →
+    818 986/752 426 (+2.3 %). Old combined files in `pbpb_2023/pre_rerun_20261013/`. (First attempt's log:
+    `pbpb23_rerun_20261013/ntuple_try1_part2_nfs_hang.log`.)
+  - Step 3: Tight fill + fit (240 TF1, 36 TH2D fallbacks), plots, Medium fill + fit — all fresh.
+  - Step 4: crossx fill (114 2D + 114 3D hists; `h2d_op_crossx_..._ctr0_5` filled) and the OS−SS twin; the latter overwrote
+    the ss_subtr file another session wrote at 16:31 from the old NTuples.
+  - Step 5: QA plots regenerated (`plots/data_qa/signal_yield_per_lumi_per_run/pbpb23_*`,
+    `signal_yield_factored_per_run/pbpb23_*`, 20:33–20:40).
+
+## Results R5
+- N_sig/L pull: 463315 −23σ → **−0.07σ** (1601 signal events, 37 937 nb vs year 3.8e4); 462759 → +0.40σ. No 2023 run
+  has |pull| > 4 any more.
+- N_HLT/L: 463315 0.43× → **1.013×** (9.62e7 vs year 9.50e7 nb), 462759 0.74× → 0.995×.
+- Remaining N_HLT/L structure (stat-only pulls, huge N): early runs 461641–462549 at 0.945–0.971×, late runs 462969–463414
+  at 1.009–1.034×, and **463380 at 0.924× (pull −158)** — the only run below 0.94×. R3 already listed 463380 (part3,
+  N_HLT/AOD 0.350) as a possible further merge-orphan victim; not checked yet. Its N_sig/L is within stat (plot).
+- Stale (out of scope by the 2026-10-13 rerun decision): 2023 `_no_res_cut`, single-muon trees/ScrambGen, template fits.
+  Not run (wait for pbpb26 + reco-eff agents): combined crossx, per-year yield consistency, R_AA, all-year FCal comparison.
+- Done items 1–5 met.
+
 ## Latest Stage
-2026-10-13 R5: PbPb23 rerun with part6 started (plan above); step 1 evsel.
+2026-10-13 R5: DONE (Done 1–5). Open for the user: 463380 (possible part3 merge orphan, 0.924× N_HLT/L); audit of the
+other May/Sep-2026 skim tasks; part2 now read from a local copy (LGD NFS read hangs, see Progress R5).
 2026-10-13 R4: DONE through step 5 — part6 (2 518 323 lost events) built, verified, installed, wired (preflight OK).
 Open: user go-ahead for the PbPb23 NTuple/downstream rerun; audit of the other 16 May/Sep-2026 tasks for merge orphans.
 2026-10-12 R3: root cause = JEDI merge orphaned finished outputs (part3 712 jobs, part2 62). Grid re-skim 53029101
